@@ -80,6 +80,16 @@ class BaseCollector(ABC):
                         grant_id=grant.id, source=self.source_name,
                         source_id=source_id, raw_data=raw,
                     ))
+
+                    # Generate embedding for new grant
+                    from app.embedding import generate_grant_embedding
+
+                    embedding = await generate_grant_embedding(
+                        grant.title, grant.summary, grant.category, grant.organization
+                    )
+                    if embedding:
+                        grant.content_embedding = embedding
+
                     log.new_count += 1
 
             log.status = "success"

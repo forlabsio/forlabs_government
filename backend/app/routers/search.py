@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.embedding import generate_embedding
 from app.models import GrantProject, GrantSource, SearchLog
 from app.schemas import GrantListResponse, SearchRequest
 
@@ -59,6 +60,21 @@ async def search_grants(
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
+
+    # Try vector search if text search returns few results
+    if total < 5:
+        query_embedding = await generate_embedding(body.query)
+        if query_embedding:
+            vector_query = (
+                select(GrantProject)
+                .options(selectinload(GrantProject.sources))
+                .where(GrantProject.content_embedding.isnot(None))
+                .order_by(GrantProject.content_embedding.cosine_distance(query_embedding))
+                .limit(body.page_size)
+            )
+            vector_result = await db.execute(vector_query)
+            grants = vector_result.scalars().unique().all()
+            total = len(grants)
 
     # Log search
     log = SearchLog(
