@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { fetchSearchInsights, fetchZeroResults } from "@/lib/api";
 import { TrendingUp, AlertCircle } from "lucide-react";
 
@@ -18,7 +17,6 @@ interface ZeroResultKeyword {
 }
 
 export default function SearchInsightsPage() {
-  const { session } = useAuth();
   const [popular, setPopular] = useState<SearchKeyword[]>([]);
   const [zeroResults, setZeroResults] = useState<ZeroResultKeyword[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +26,7 @@ export default function SearchInsightsPage() {
     async function load() {
       setLoading(true);
       try {
-        const token = session?.access_token;
+        const token = localStorage.getItem("govgrants_token");
         if (token) {
           const [popularData, zeroData] = await Promise.all([
             fetchSearchInsights(token, days),
@@ -44,7 +42,7 @@ export default function SearchInsightsPage() {
       }
     }
     load();
-  }, [session, days]);
+  }, [days]);
 
   return (
     <div className="px-6 py-8 lg:px-8">

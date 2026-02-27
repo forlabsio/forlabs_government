@@ -3,33 +3,37 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export interface Grant {
   id: string;
   title: string;
-  organization: string;
-  category: string;
-  region: string;
+  summary?: string;
+  category?: string;
   amount_min?: number;
   amount_max?: number;
-  deadline?: string;
-  description?: string;
-  eligibility?: string;
-  source: string;
-  source_url?: string;
+  organization?: string;
+  end_date?: string;
+  start_date?: string;
   status?: string;
+  detail_url?: string;
+  sources: string[];
+  days_left?: number;
+  view_count?: number;
   created_at?: string;
-  updated_at?: string;
+  // Detail fields
+  target_industry?: string[];
+  target_region?: string[];
+  target_age?: string;
 }
 
 export interface GrantListResponse {
   items: Grant[];
   total: number;
   page: number;
-  size: number;
-  pages: number;
+  page_size: number;
 }
 
 export interface SearchResponse {
-  results: Grant[];
+  items: Grant[];
   total: number;
-  query: string;
+  page: number;
+  page_size: number;
 }
 
 export async function fetchGrants(
@@ -53,7 +57,11 @@ export async function fetchGrantDetail(id: string): Promise<Grant> {
 
 export async function searchGrants(body: {
   query: string;
+  category?: string;
+  region?: string;
+  source?: string;
   page?: number;
+  page_size?: number;
 }): Promise<SearchResponse> {
   const res = await fetch(`${API_URL}/api/search`, {
     method: "POST",
@@ -62,6 +70,176 @@ export async function searchGrants(body: {
   });
   if (!res.ok) throw new Error("Failed to search");
   return res.json();
+}
+
+// ─── Auth API ────────────────────────────────────────────
+
+export interface AuthResponse {
+  token: string;
+  user: UserInfo;
+}
+
+export async function sendVerificationCode(
+  email: string
+): Promise<{ message: string }> {
+  const res = await fetch(`${API_URL}/api/auth/send-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "인증코드 발송에 실패했습니다.");
+  }
+  return res.json();
+}
+
+export async function verifyCode(
+  email: string,
+  code: string
+): Promise<{ verified: boolean }> {
+  const res = await fetch(`${API_URL}/api/auth/verify-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "인증코드 확인에 실패했습니다.");
+  }
+  return res.json();
+}
+
+export interface SignupData {
+  email: string;
+  password: string;
+  name?: string;
+  company_name?: string;
+  industry?: string;
+  company_age?: number;
+  region?: string;
+  employee_count?: number;
+  revenue_range?: string;
+  email_opt_in?: boolean;
+  verification_code: string;
+}
+
+export async function signup(data: SignupData): Promise<AuthResponse> {
+  const res = await fetch(`${API_URL}/api/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.detail || "회원가입에 실패했습니다.");
+  }
+  return res.json();
+}
+
+export async function login(
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "로그인에 실패했습니다.");
+  }
+  return res.json();
+}
+
+// ─── User Profile API ────────────────────────────────────
+
+export interface UserProfile {
+  company_name?: string;
+  industry?: string;
+  company_age?: number;
+  region?: string;
+  employee_count?: number;
+  revenue_range?: string;
+  email_opt_in?: boolean;
+}
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  name?: string;
+  is_admin: boolean;
+  company_name?: string;
+  industry?: string;
+  company_age?: number;
+  region?: string;
+  employee_count?: number;
+  revenue_range?: string;
+  email_opt_in: boolean;
+  created_at?: string;
+  bookmark_count?: number;
+}
+
+export async function fetchMe(token: string): Promise<UserInfo> {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch profile");
+  return res.json();
+}
+
+export async function updateProfile(
+  token: string,
+  profile: UserProfile
+): Promise<UserInfo> {
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profile),
+  });
+  if (!res.ok) throw new Error("Failed to update profile");
+  return res.json();
+}
+
+// ─── Bookmark API ────────────────────────────────────────
+
+export async function fetchBookmarks(token: string): Promise<any[]> {
+  const res = await fetch(`${API_URL}/api/bookmarks`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch bookmarks");
+  return res.json();
+}
+
+export async function addBookmark(
+  token: string,
+  grantId: string
+): Promise<any> {
+  const res = await fetch(`${API_URL}/api/bookmarks`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ grant_id: grantId }),
+  });
+  if (!res.ok) throw new Error("Failed to add bookmark");
+  return res.json();
+}
+
+export async function removeBookmark(
+  token: string,
+  grantId: string
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/bookmarks/${grantId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to remove bookmark");
 }
 
 // ─── Admin API ──────────────────────────────────────────
@@ -135,10 +313,35 @@ export async function deleteBanner(token: string, id: string): Promise<any> {
 }
 
 export async function triggerCollect(token: string): Promise<any> {
-  const res = await fetch(`${API_URL}/api/admin/collect`, {
+  const res = await fetch(`${API_URL}/api/admin/trigger-collect`, {
     method: "POST",
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error("Failed to trigger collect");
   return res.json();
+}
+
+// ─── Admin User Management ───────────────────────────────
+
+export async function fetchUsers(
+  token: string,
+  params: { search?: string; page?: number; page_size?: number } = {}
+): Promise<{ items: UserInfo[]; total: number; page: number; page_size: number }> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.page_size) query.set("page_size", String(params.page_size));
+  const res = await fetch(`${API_URL}/api/admin/users?${query}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json();
+}
+
+export async function deleteUser(token: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to delete user");
 }

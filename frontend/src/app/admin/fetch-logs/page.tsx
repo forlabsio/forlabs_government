@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { triggerCollect } from "@/lib/api";
 import {
   CheckCircle2,
@@ -55,19 +54,18 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function FetchLogsPage() {
-  const { session } = useAuth();
   const [logs, setLogs] = useState<FetchLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
 
   useEffect(() => {
     loadLogs();
-  }, [session]);
+  }, []);
 
   async function loadLogs() {
     setLoading(true);
     try {
-      const token = session?.access_token;
+      const token = localStorage.getItem("govgrants_token");
       if (token) {
         const res = await fetch(`${API_URL}/api/admin/fetch-logs`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -87,7 +85,7 @@ export default function FetchLogsPage() {
   async function handleTrigger() {
     setTriggering(true);
     try {
-      const token = session?.access_token;
+      const token = localStorage.getItem("govgrants_token");
       if (token) {
         await triggerCollect(token);
         // Reload logs after a moment

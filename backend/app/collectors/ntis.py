@@ -1,90 +1,244 @@
 # backend/app/collectors/ntis.py
+import logging
+import re
+from datetime import date
+from xml.etree import ElementTree
+
 import httpx
 
 from app.collectors.base import BaseCollector
 from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Search keywords to find R&D projects relevant to government grants
+SEARCH_KEYWORDS = [
+    "지원사업",
+    "연구개발",
+    "기술개발",
+    "사업화",
+    "중소기업",
+    "창업",
+]
 
 
 class NtisCollector(BaseCollector):
     source_name = "ntis"
 
     async def fetch_raw(self) -> list[dict]:
-        url = "https://www.ntis.go.kr/rndopen/api/search/projectSearch"
-        params = {
-            "apiKey": settings.ntis_api_key,
-            "startPage": 1,
-            "displayCnt": 100,
-            "sortBy": "startDate",
-            "sortOrder": "desc",
-        }
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(url, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-        # NTIS returns results under "ResultData" or similar wrapper
-        return data.get("ResultData", data.get("data", []))
+        """Fetch R&D projects from NTIS OpenAPI (XML response)."""
+        url = "https://www.ntis.go.kr/rndopen/openApi/public_project"
+        all_items: list[dict] = []
+        seen_ids: set[str] = set()
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            for keyword in SEARCH_KEYWORDS:
+                start = 1
+                page_size = 100
+
+                while True:
+                    params = {
+                        "apprvKey": settings.ntis_api_key,
+                        "collection": "project",
+                        "SRWR": keyword,
+                        "searchFd": "BI",
+                        "searchRnkn": "DATE/DESC",
+                        "startPosition": start,
+                        "displayCnt": page_size,
+                        "addQuery": f"PY={date.today().year}/SAME",
+                        "cmbnApiYn": "Y",
+                    }
+                    try:
+                        resp = await client.get(url, params=params)
+                        resp.raise_for_status()
+                    except httpx.HTTPError as e:
+                        logger.warning(f"NTIS API error for keyword '{keyword}': {e}")
+                        break
+
+                    items = self._parse_xml(resp.text)
+                    if not items:
+                        break
+
+                    for item in items:
+                        pid = item.get("ProjectNumber", "")
+                        if pid and pid not in seen_ids:
+                            seen_ids.add(pid)
+                            all_items.append(item)
+
+                    # Check if we got fewer results than requested (last page)
+                    if len(items) < page_size:
+                        break
+
+                    start += page_size
+
+                    # Safety limit per keyword
+                    if start > 500:
+                        break
+
+        logger.info(f"NTIS fetched {len(all_items)} unique projects")
+        return all_items
+
+    @staticmethod
+    def _parse_xml(xml_text: str) -> list[dict]:
+        """Parse NTIS XML response into list of dicts."""
+        try:
+            root = ElementTree.fromstring(xml_text)
+        except ElementTree.ParseError:
+            logger.error("Failed to parse NTIS XML response")
+            return []
+
+        result_set = root.find("RESULTSET")
+        if result_set is None:
+            return []
+
+        items = []
+        for hit in result_set.findall("HIT"):
+            item = {}
+            item["ProjectNumber"] = _text(hit, "ProjectNumber")
+
+            # Project title
+            title_el = hit.find("ProjectTitle")
+            if title_el is not None:
+                item["ProjectTitle_Korean"] = _text(title_el, "Korean")
+                item["ProjectTitle_English"] = _text(title_el, "English")
+
+            # Manager
+            mgr = hit.find("Manager")
+            if mgr is not None:
+                item["Manager_Name"] = _text(mgr, "Name")
+
+            # Goal & Abstract
+            for section in ("Goal", "Abstract", "Effect"):
+                el = hit.find(section)
+                if el is not None:
+                    item[f"{section}_Full"] = _text(el, "Full")
+                    item[f"{section}_Teaser"] = _text(el, "Teaser")
+
+            # Keyword
+            kw = hit.find("Keyword")
+            if kw is not None:
+                item["Keyword_Korean"] = _text(kw, "Korean")
+                item["Keyword_English"] = _text(kw, "English")
+
+            # Agencies
+            for tag in ("OrderAgency", "ResearchAgency", "ManageAgency"):
+                el = hit.find(tag)
+                if el is not None:
+                    item[f"{tag}_Name"] = _text(el, "Name")
+
+            # Ministry
+            ministry = hit.find("Ministry")
+            if ministry is not None:
+                item["Ministry_Name"] = _text(ministry, "Name")
+
+            # Budget project / Business name
+            bp = hit.find("BudgetProject")
+            if bp is not None:
+                item["BudgetProject_Name"] = _text(bp, "Name")
+            item["BusinessName"] = _text(hit, "BusinessName")
+
+            # Project year & period
+            item["ProjectYear"] = _text(hit, "ProjectYear")
+            period = hit.find("ProjectPeriod")
+            if period is not None:
+                item["Period_Start"] = _text(period, "Start")
+                item["Period_End"] = _text(period, "End")
+                item["Period_TotalStart"] = _text(period, "TotalStart")
+                item["Period_TotalEnd"] = _text(period, "TotalEnd")
+
+            # Funds
+            item["GovernmentFunds"] = _text(hit, "GovernmentFunds")
+            item["TotalFunds"] = _text(hit, "TotalFunds")
+
+            # Science classification
+            for sc in hit.findall("ScienceClass"):
+                if sc.get("type") == "new" and sc.get("sequence") == "1":
+                    item["ScienceClass_Large"] = _text(sc, "Large")
+                    item["ScienceClass_Medium"] = _text(sc, "Medium")
+
+            # Region, development phase
+            region = hit.find("Region")
+            if region is not None:
+                item["Region"] = region.text or ""
+
+            dev = hit.find("DevelopmentPhases")
+            if dev is not None:
+                item["DevelopmentPhases"] = dev.text or ""
+
+            items.append(item)
+
+        return items
 
     def normalize(self, raw: dict) -> dict:
+        title = _strip_highlight(raw.get("ProjectTitle_Korean", ""))
+        summary = _strip_highlight(
+            raw.get("Abstract_Full", "")
+            or raw.get("Abstract_Teaser", "")
+            or raw.get("Goal_Full", "")
+            or raw.get("Goal_Teaser", "")
+        )
+        organization = _strip_highlight(raw.get("ResearchAgency_Name", ""))
+        ministry = _strip_highlight(raw.get("Ministry_Name", ""))
+
+        # Build detail URL
+        proj_no = raw.get("ProjectNumber", "")
+        detail_url = (
+            f"https://www.ntis.go.kr/project/pjtInfo.do?pjtId={proj_no}"
+            if proj_no
+            else ""
+        )
+
         return {
-            "title": raw.get("projNm", ""),
-            "summary": raw.get("projAbstrct", ""),
-            "category": self._map_category(raw.get("sstcCodeNm", "")),
-            "amount_min": self._parse_amount(raw.get("govBudget")),
-            "amount_max": self._parse_amount(raw.get("totBudget")),
-            "target_industry": [raw.get("sstcCodeNm", "")] if raw.get("sstcCodeNm") else [],
-            "target_region": [],
+            "title": title,
+            "summary": summary[:2000] if summary else "",
+            "category": "R&D",
+            "amount_min": _parse_amount(raw.get("GovernmentFunds")),
+            "amount_max": _parse_amount(raw.get("TotalFunds")),
+            "target_industry": (
+                [raw.get("ScienceClass_Large", "")]
+                if raw.get("ScienceClass_Large")
+                else []
+            ),
+            "target_region": (
+                [raw.get("Region", "")] if raw.get("Region") else []
+            ),
             "target_age": None,
-            "start_date": self._parse_date(raw.get("projBeginDt")),
-            "end_date": self._parse_date(raw.get("projEndDt")),
-            "status": self._map_status(raw.get("projSttusNm", "")),
-            "organization": raw.get("rcorgNm", ""),
-            "detail_url": raw.get("detailUrl", ""),
-            "source_id": raw.get("projNo", ""),
+            "start_date": _parse_date(raw.get("Period_Start")),
+            "end_date": _parse_date(raw.get("Period_End")),
+            "status": "진행중",
+            "organization": f"{ministry} / {organization}" if ministry else organization,
+            "detail_url": detail_url,
+            "source_id": proj_no,
         }
 
-    @staticmethod
-    def _map_category(raw_cat: str) -> str:
-        mapping = {
-            "정보/통신": "R&D",
-            "기계": "R&D",
-            "에너지": "R&D",
-            "바이오": "R&D",
-            "화학": "R&D",
-            "환경": "R&D",
-            "소재": "R&D",
-            "건설/교통": "R&D",
-            "농림수산식품": "R&D",
-        }
-        for key, val in mapping.items():
-            if key in raw_cat:
-                return val
-        return "R&D"
 
-    @staticmethod
-    def _parse_amount(value) -> int | None:
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return None
+def _text(parent, tag: str) -> str:
+    """Safely get text from an XML sub-element."""
+    el = parent.find(tag)
+    return (el.text or "").strip() if el is not None else ""
 
-    @staticmethod
-    def _parse_date(date_str: str | None):
-        if not date_str:
-            return None
-        from datetime import date
 
-        try:
-            clean = date_str.replace("-", "").replace(".", "").replace("/", "")[:8]
-            return date(int(clean[:4]), int(clean[4:6]), int(clean[6:8]))
-        except (ValueError, IndexError):
-            return None
+def _strip_highlight(text: str) -> str:
+    """Remove NTIS search highlight <span> tags."""
+    return re.sub(r'<span class="?search_word"?>|</span>', "", text).strip()
 
-    @staticmethod
-    def _map_status(status: str) -> str:
-        if "진행" in status or "수행" in status:
-            return "진행중"
-        if "완료" in status or "종료" in status:
-            return "종료"
-        return status or "진행중"
+
+def _parse_amount(value: str | None) -> int | None:
+    if not value:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_date(date_str: str | None):
+    if not date_str:
+        return None
+    try:
+        clean = date_str.replace("-", "").replace(".", "").replace("/", "").replace(" ", "")[:8]
+        if len(clean) < 8:
+            return None
+        return date(int(clean[:4]), int(clean[4:6]), int(clean[6:8]))
+    except (ValueError, IndexError):
+        return None

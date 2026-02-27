@@ -19,9 +19,12 @@ class GrantListItem(BaseModel):
     amount_max: int | None = None
     organization: str | None = None
     end_date: date | None = None
+    start_date: date | None = None
     status: str | None = None
     detail_url: str | None = None
     sources: list[str] = []
+    view_count: int = 0
+    created_at: datetime | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -36,8 +39,6 @@ class GrantDetail(GrantListItem):
     target_industry: list[str] = []
     target_region: list[str] = []
     target_age: str | None = None
-    start_date: date | None = None
-    created_at: datetime | None = None
 
 
 class GrantListResponse(BaseModel):
@@ -71,6 +72,59 @@ class UserResponse(BaseModel):
     industry: str | None = None
     company_age: int | None = None
     region: str | None = None
+    employee_count: int | None = None
+    revenue_range: str | None = None
+    email_opt_in: bool = True
+    created_at: datetime | None = None
+
+
+class AdminUserResponse(UserResponse):
+    """Extended user info for admin views."""
+    bookmark_count: int = 0
+
+
+# ── Auth Schemas ──────────────────────────────────────────────
+
+
+class SendVerificationRequest(BaseModel):
+    email: str
+
+
+class SendVerificationResponse(BaseModel):
+    message: str
+
+
+class VerifyCodeRequest(BaseModel):
+    email: str
+    code: str
+
+
+class VerifyCodeResponse(BaseModel):
+    verified: bool
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    name: str | None = None
+    company_name: str | None = None
+    industry: str | None = None
+    company_age: int | None = None
+    region: str | None = None
+    employee_count: int | None = None
+    revenue_range: str | None = None
+    email_opt_in: bool = True
+    verification_code: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: UserResponse
 
 
 # ── Bookmark Schemas ───────────────────────────────────────────

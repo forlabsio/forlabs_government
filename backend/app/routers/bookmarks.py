@@ -4,28 +4,54 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import User, UserBookmark
-from app.schemas import BookmarkCreate, BookmarkResponse
+from app.models import GrantProject, GrantSource, User, UserBookmark
+from app.schemas import BookmarkCreate, BookmarkResponse, GrantListItem
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 
 
-@router.get("", response_model=list[BookmarkResponse])
+@router.get("")
 async def list_bookmarks(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List the authenticated user's bookmarks."""
+    """List the authenticated user's bookmarked grants with full grant info."""
     result = await db.execute(
         select(UserBookmark)
         .where(UserBookmark.user_id == user.id)
         .order_by(UserBookmark.created_at.desc())
     )
     bookmarks = result.scalars().all()
-    return [BookmarkResponse.model_validate(b) for b in bookmarks]
+
+    items = []
+    for bm in bookmarks:
+        grant_result = await db.execute(
+            select(GrantProject)
+            .options(selectinload(GrantProject.sources))
+            .where(GrantProject.id == bm.grant_id)
+        )
+        grant = grant_result.scalar_one_or_none()
+        if grant:
+            source_names = [gs.source for gs in grant.sources] if grant.sources else []
+            item = GrantListItem.model_validate({
+                "id": grant.id,
+                "title": grant.title,
+                "summary": grant.summary,
+                "category": grant.category,
+                "amount_min": grant.amount_min,
+                "amount_max": grant.amount_max,
+                "organization": grant.organization,
+                "end_date": grant.end_date,
+                "status": grant.status,
+                "detail_url": grant.detail_url,
+                "sources": source_names,
+            })
+            items.append(item)
+    return items
 
 
 @router.post("", response_model=BookmarkResponse, status_code=status.HTTP_201_CREATED)

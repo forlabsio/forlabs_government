@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import {
   fetchBanners,
   createBanner as createBannerApi,
@@ -28,7 +27,6 @@ interface Banner {
 }
 
 export default function BannersPage() {
-  const { session } = useAuth();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -41,12 +39,12 @@ export default function BannersPage() {
 
   useEffect(() => {
     loadBanners();
-  }, [session]);
+  }, []);
 
   async function loadBanners() {
     setLoading(true);
     try {
-      const token = session?.access_token;
+      const token = localStorage.getItem("govgrants_token");
       if (token) {
         const result = await fetchBanners(token);
         setBanners(result?.banners || []);
@@ -62,7 +60,7 @@ export default function BannersPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      const token = session?.access_token;
+      const token = localStorage.getItem("govgrants_token");
       if (token) {
         await createBannerApi(token, form);
         setShowModal(false);
@@ -79,7 +77,7 @@ export default function BannersPage() {
   async function handleDelete(id: string) {
     if (!confirm("이 배너를 삭제하시겠습니까?")) return;
     try {
-      const token = session?.access_token;
+      const token = localStorage.getItem("govgrants_token");
       if (token) {
         await deleteBannerApi(token, id);
         await loadBanners();

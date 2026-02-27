@@ -14,11 +14,59 @@ def init_resend():
         resend.api_key = settings.resend_api_key
 
 
+def send_verification_email(to_email: str, code: str) -> str | None:
+    """Send 6-digit verification code to the given email."""
+    if not settings.resend_api_key:
+        logger.warning("Resend API key not set, skipping verification email")
+        return None
+
+    init_resend()
+
+    html = f"""
+    <div style="max-width:600px; margin:0 auto; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+        <div style="background:#2563EB; padding:24px; border-radius:12px 12px 0 0;">
+            <h1 style="color:white; margin:0; font-size:20px;">이메일 인증</h1>
+        </div>
+        <div style="padding:32px 24px; background:#f9fafb; text-align:center;">
+            <p style="font-size:16px; color:#374151; margin-bottom:24px;">
+                아래 인증코드를 입력해주세요
+            </p>
+            <div style="background:white; border:2px solid #2563EB; border-radius:12px;
+                        padding:20px; display:inline-block; letter-spacing:8px;
+                        font-size:32px; font-weight:bold; color:#2563EB;">
+                {code}
+            </div>
+            <p style="font-size:14px; color:#6b7280; margin-top:24px;">
+                이 코드는 10분간 유효합니다.
+            </p>
+        </div>
+        <div style="padding:16px; text-align:center; color:#9ca3af; font-size:12px;">
+            <p>이 메일은 GovGrants에서 발송되었습니다.</p>
+        </div>
+    </div>
+    """
+
+    try:
+        result = resend.Emails.send({
+            "from": "GovGrants <noreply@govgrants.kr>",
+            "to": [to_email],
+            "subject": f"[GovGrants] 이메일 인증코드: {code}",
+            "html": html,
+        })
+        logger.info(f"Verification email sent to {to_email}: {result}")
+        return result.get("id")
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {to_email}: {e}")
+        return None
+
+
 def send_curation_email(
     to_email: str,
     user_name: str | None,
     grants: list[dict],
     today: date | None = None,
+    matched_count: int | None = None,
+    total_count: int | None = None,
 ) -> str | None:
     """Send daily curation email with matched grants."""
     if not settings.resend_api_key:
@@ -63,7 +111,7 @@ def send_curation_email(
         </div>
         <div style="padding:24px; background:#f9fafb;">
             <p style="font-size:16px; color:#374151;">안녕하세요 {name}님,</p>
-            <p style="font-size:14px; color:#6b7280;">회원님의 기업 프로필에 맞는 새로운 지원사업을 찾았습니다.</p>
+            <p style="font-size:14px; color:#6b7280;">{"오늘 등록된 " + str(total_count) + "개 사업 중, <strong>" + name + "</strong>이 지원 가능한 사업은 <strong style='color:#2563EB'>" + str(matched_count) + "개</strong>입니다." if matched_count and total_count else "회원님의 기업 프로필에 맞는 새로운 지원사업을 찾았습니다."}</p>
             {grants_html}
             <div style="text-align:center; margin-top:24px;">
                 <a href="https://govgrants.kr/grants" style="background:#2563EB; color:white; padding:12px 24px; border-radius:8px; text-decoration:none; font-size:14px;">더 많은 지원사업 보기</a>

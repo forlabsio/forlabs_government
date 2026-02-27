@@ -7,6 +7,7 @@ import {
   Search,
   Image,
   FileText,
+  Users,
   ChevronLeft,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -21,6 +22,11 @@ const NAV_ITEMS = [
     label: "검색 인사이트",
     href: "/admin/search-insights",
     icon: Search,
+  },
+  {
+    label: "회원 관리",
+    href: "/admin/users",
+    icon: Users,
   },
   {
     label: "배너 관리",

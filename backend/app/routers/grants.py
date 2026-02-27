@@ -27,9 +27,12 @@ def _grant_to_list_item(grant: GrantProject) -> GrantListItem:
             "amount_max": grant.amount_max,
             "organization": grant.organization,
             "end_date": grant.end_date,
+            "start_date": grant.start_date,
             "status": grant.status,
             "detail_url": grant.detail_url,
             "sources": source_names,
+            "view_count": grant.view_count,
+            "created_at": grant.created_at,
         }
     )
 
@@ -40,11 +43,12 @@ async def list_grants(
     source: str | None = Query(None),
     region: str | None = Query(None),
     status_filter: str | None = Query(None, alias="status"),
+    sort: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """List grants with optional filters, ordered by end_date ascending."""
+    """List grants with optional filters and sorting."""
     query = select(GrantProject).options(selectinload(GrantProject.sources))
     count_query = select(func.count()).select_from(GrantProject)
 
@@ -64,8 +68,23 @@ async def list_grants(
             count_query.join(GrantProject.sources).where(GrantSource.source == source)
         )
 
-    # Order by end_date ascending (nulls last)
-    query = query.order_by(GrantProject.end_date.asc().nullslast())
+    # Sorting
+    if sort == "deadline":
+        # Active grants first (nearest deadline), then ongoing/no-deadline items
+        query = query.where(
+            (GrantProject.end_date >= date.today()) | (GrantProject.end_date.is_(None))
+        )
+        count_query = count_query.where(
+            (GrantProject.end_date >= date.today()) | (GrantProject.end_date.is_(None))
+        )
+        query = query.order_by(GrantProject.end_date.asc().nullslast())
+    elif sort == "recent":
+        query = query.order_by(GrantProject.created_at.desc().nullslast())
+    elif sort == "amount":
+        # Highest amount first, nulls last
+        query = query.order_by(GrantProject.amount_max.desc().nullslast())
+    else:
+        query = query.order_by(GrantProject.end_date.asc().nullslast())
 
     # Pagination
     offset = (page - 1) * page_size
@@ -99,6 +118,12 @@ async def get_grant(
             status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found"
         )
 
+    # Increment view count
+    grant.view_count = (grant.view_count or 0) + 1
+    await db.flush()
+    await db.commit()
+    await db.refresh(grant)
+
     source_names = [gs.source for gs in grant.sources] if grant.sources else []
     return GrantDetail.model_validate(
         {
@@ -113,6 +138,7 @@ async def get_grant(
             "status": grant.status,
             "detail_url": grant.detail_url,
             "sources": source_names,
+            "view_count": grant.view_count,
             "target_industry": grant.target_industry or [],
             "target_region": grant.target_region or [],
             "target_age": grant.target_age,

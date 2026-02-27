@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   User,
   Building2,
-  Bookmark,
   LogOut,
   Save,
   CheckCircle2,
@@ -80,16 +79,38 @@ export default function MyPage() {
     emailNotification: true,
   });
 
-  // Load profile from localStorage on mount
+  // Load profile from server (fallback to localStorage)
   useEffect(() => {
-    const stored = localStorage.getItem("govgrants_profile");
-    if (stored) {
-      try {
-        setProfile(JSON.parse(stored));
-      } catch {
-        // ignore parse errors
+    async function loadProfile() {
+      const token = localStorage.getItem("govgrants_token");
+      if (token) {
+        try {
+          const { fetchMe } = await import("@/lib/api");
+          const me = await fetchMe(token);
+          setProfile({
+            companyName: me.company_name || "",
+            industry: me.industry || "",
+            yearsInBusiness: me.company_age ? String(me.company_age) : "",
+            region: me.region || "",
+            employeeCount: me.employee_count ? String(me.employee_count) : "",
+            revenueRange: me.revenue_range || "",
+            emailNotification: me.email_opt_in ?? true,
+          });
+          return;
+        } catch {
+          // fallback to localStorage
+        }
+      }
+      const stored = localStorage.getItem("govgrants_profile");
+      if (stored) {
+        try {
+          setProfile(JSON.parse(stored));
+        } catch {
+          // ignore
+        }
       }
     }
+    loadProfile();
   }, []);
 
   async function handleSave(e: React.FormEvent) {
@@ -98,12 +119,23 @@ export default function MyPage() {
     setSaved(false);
 
     try {
-      // Save to localStorage for now; backend integration later
+      // Save to localStorage as fallback
       localStorage.setItem("govgrants_profile", JSON.stringify(profile));
 
-      // TODO: Call backend API when ready
-      // const token = session?.access_token;
-      // if (token) await saveProfile(token, profile);
+      // Save to server if token available
+      const token = localStorage.getItem("govgrants_token");
+      if (token) {
+        const { updateProfile } = await import("@/lib/api");
+        await updateProfile(token, {
+          company_name: profile.companyName || undefined,
+          industry: profile.industry || undefined,
+          company_age: profile.yearsInBusiness ? parseInt(profile.yearsInBusiness) : undefined,
+          region: profile.region || undefined,
+          employee_count: profile.employeeCount ? parseInt(profile.employeeCount) : undefined,
+          revenue_range: profile.revenueRange || undefined,
+          email_opt_in: profile.emailNotification,
+        });
+      }
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -132,7 +164,7 @@ export default function MyPage() {
                   {user?.email?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <p className="mt-3 text-sm font-medium text-gray-900">
-                  {user?.user_metadata?.full_name || user?.email || "사용자"}
+                  {user?.name || user?.email || "사용자"}
                 </p>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
@@ -147,13 +179,6 @@ export default function MyPage() {
                 >
                   <Building2 className="h-4 w-4" />
                   기업 정보
-                </Link>
-                <Link
-                  href="/mypage/bookmarks"
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-                >
-                  <Bookmark className="h-4 w-4" />
-                  북마크
                 </Link>
                 <button
                   onClick={signOut}

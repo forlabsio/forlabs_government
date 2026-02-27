@@ -13,10 +13,10 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=10, minute=0),
         "args": ("10:00",),
     },
-    "collect-1pm": {
+    "collect-2pm": {
         "task": "app.tasks.run_all_collectors",
-        "schedule": crontab(hour=13, minute=0),
-        "args": ("13:00",),
+        "schedule": crontab(hour=14, minute=0),
+        "args": ("14:00",),
     },
     "collect-5pm": {
         "task": "app.tasks.run_all_collectors",

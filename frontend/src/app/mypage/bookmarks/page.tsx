@@ -19,22 +19,38 @@ export default function BookmarksPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load bookmarks from localStorage for now; backend integration later
-    const stored = localStorage.getItem("govgrants_bookmarks");
-    if (stored) {
-      try {
-        setBookmarks(JSON.parse(stored));
-      } catch {
-        // ignore parse errors
+    async function loadBookmarks() {
+      const token = localStorage.getItem("govgrants_token");
+      if (token) {
+        try {
+          const { fetchBookmarks } = await import("@/lib/api");
+          const data = await fetchBookmarks(token);
+          setBookmarks(data);
+          setLoading(false);
+          return;
+        } catch {
+          // fallback
+        }
       }
+      const stored = localStorage.getItem("govgrants_bookmarks");
+      if (stored) {
+        try { setBookmarks(JSON.parse(stored)); } catch { /* ignore */ }
+      }
+      setLoading(false);
     }
-    setLoading(false);
+    loadBookmarks();
   }, []);
 
-  function removeBookmark(grantId: string) {
+  async function handleRemoveBookmark(grantId: string) {
+    const token = localStorage.getItem("govgrants_token");
+    if (token) {
+      try {
+        const { removeBookmark: removeBm } = await import("@/lib/api");
+        await removeBm(token, grantId);
+      } catch { /* ignore */ }
+    }
     const updated = bookmarks.filter((g) => g.id !== grantId);
     setBookmarks(updated);
-    localStorage.setItem("govgrants_bookmarks", JSON.stringify(updated));
   }
 
   return (
@@ -50,7 +66,7 @@ export default function BookmarksPage() {
                   {user?.email?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <p className="mt-3 text-sm font-medium text-gray-900">
-                  {user?.user_metadata?.full_name || user?.email || "사용자"}
+                  {user?.name || user?.email || "사용자"}
                 </p>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
@@ -110,7 +126,7 @@ export default function BookmarksPage() {
                     <button
                       onClick={(e) => {
                         e.preventDefault();
-                        removeBookmark(grant.id);
+                        handleRemoveBookmark(grant.id);
                       }}
                       title="북마크 제거"
                       className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm transition-colors hover:bg-red-50"

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { fetchDashboard } from "@/lib/api";
 import {
   Briefcase,
@@ -15,47 +14,51 @@ import {
 } from "lucide-react";
 
 interface DashboardData {
-  totalGrants: number;
-  activeGrants: number;
-  totalUsers: number;
-  todaySearches: number;
-  recentLogs: FetchLog[];
+  total_grants: number;
+  active_grants: number;
+  total_users: number;
+  today_searches: number;
+  fetch_logs_today: FetchLog[];
 }
 
 interface FetchLog {
   id: string;
   source: string;
-  scheduled_time: string;
-  status: "success" | "failed" | "partial";
+  schedule_time: string;
+  status: string;
+  total_fetched: number;
   new_count: number;
-  updated_count: number;
+  duplicate_count: number;
+  updated_count?: number;
   error_message?: string;
+  started_at?: string;
+  finished_at?: string;
 }
 
 const STAT_CARDS = [
   {
-    key: "totalGrants" as const,
+    key: "total_grants" as const,
     label: "총 지원사업",
     icon: Briefcase,
     iconBg: "bg-blue-50",
     iconColor: "text-blue-600",
   },
   {
-    key: "activeGrants" as const,
+    key: "active_grants" as const,
     label: "접수중 사업",
     icon: FileCheck,
     iconBg: "bg-emerald-50",
     iconColor: "text-emerald-600",
   },
   {
-    key: "totalUsers" as const,
+    key: "total_users" as const,
     label: "총 회원수",
     icon: Users,
     iconBg: "bg-amber-50",
     iconColor: "text-amber-600",
   },
   {
-    key: "todaySearches" as const,
+    key: "today_searches" as const,
     label: "오늘 검색수",
     icon: Search,
     iconBg: "bg-purple-50",
@@ -91,20 +94,19 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AdminDashboardPage() {
-  const { session } = useAuth();
   const [data, setData] = useState<DashboardData>({
-    totalGrants: 0,
-    activeGrants: 0,
-    totalUsers: 0,
-    todaySearches: 0,
-    recentLogs: [],
+    total_grants: 0,
+    active_grants: 0,
+    total_users: 0,
+    today_searches: 0,
+    fetch_logs_today: [],
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const token = session?.access_token;
+        const token = localStorage.getItem("govgrants_token");
         if (token) {
           const result = await fetchDashboard(token);
           setData(result);
@@ -116,7 +118,7 @@ export default function AdminDashboardPage() {
       }
     }
     load();
-  }, [session]);
+  }, []);
 
   return (
     <div className="px-6 py-8 lg:px-8">
@@ -147,7 +149,7 @@ export default function AdminDashboardPage() {
                     <div className="mt-2 h-8 w-20 animate-pulse rounded bg-gray-100" />
                   ) : (
                     <p className="mt-1 text-3xl font-bold text-gray-900">
-                      {value.toLocaleString()}
+                      {(value ?? 0).toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -183,7 +185,7 @@ export default function AdminDashboardPage() {
               />
             ))}
           </div>
-        ) : data.recentLogs.length > 0 ? (
+        ) : data.fetch_logs_today.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -197,7 +199,7 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data.recentLogs.map((log, idx) => (
+                {data.fetch_logs_today.map((log, idx) => (
                   <tr
                     key={log.id}
                     className={idx % 2 === 1 ? "bg-gray-50/50" : ""}
@@ -206,7 +208,7 @@ export default function AdminDashboardPage() {
                       {log.source}
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-500">
-                      {log.scheduled_time}
+                      {log.schedule_time}
                     </td>
                     <td className="px-6 py-3">
                       <StatusBadge status={log.status} />

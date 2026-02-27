@@ -93,9 +93,18 @@ export default function GrantDetailPage({
     );
   }
 
-  const ddayText = formatDDay(grant.deadline);
-  const ddayColor = getDDayColor(grant.deadline);
+  const ddayText = formatDDay(grant.end_date);
+  const ddayColor = getDDayColor(grant.end_date);
   const amount = formatAmountRange(grant.amount_min, grant.amount_max);
+
+  const SOURCE_LABELS: Record<string, string> = {
+    bizinfo: "기업마당",
+    ntis: "NTIS",
+    kocca: "KOCCA",
+    kstartup: "K-Startup",
+    subsidy24: "보조금24",
+    smes: "중소벤처24",
+  };
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -124,11 +133,11 @@ export default function GrantDetailPage({
                   {grant.category}
                 </span>
               )}
-              {grant.source && (
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600">
-                  {grant.source}
+              {grant.sources?.map((src) => (
+                <span key={src} className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600">
+                  {SOURCE_LABELS[src] || src}
                 </span>
-              )}
+              ))}
             </div>
 
             <h1 className="text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
@@ -159,7 +168,7 @@ export default function GrantDetailPage({
               <div>
                 <p className="text-xs text-gray-500">지역</p>
                 <p className="font-medium text-gray-900">
-                  {grant.region || "전국"}
+                  {grant.target_region?.length ? grant.target_region.join(", ") : "전국"}
                 </p>
               </div>
             </div>
@@ -168,7 +177,7 @@ export default function GrantDetailPage({
               <div>
                 <p className="text-xs text-gray-500">마감일</p>
                 <p className="font-medium text-gray-900">
-                  {grant.deadline || "상시접수"}
+                  {grant.end_date || "상시접수"}
                 </p>
               </div>
             </div>
@@ -183,36 +192,24 @@ export default function GrantDetailPage({
             </div>
           </div>
 
-          {/* Description */}
-          {grant.description && (
+          {/* Summary */}
+          {grant.summary && (
             <div className="px-6 py-8 sm:px-8">
               <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
                 <Tag className="h-5 w-5 text-gray-400" />
                 사업 개요
               </h2>
               <div className="whitespace-pre-wrap text-base leading-relaxed text-gray-600">
-                {grant.description}
-              </div>
-            </div>
-          )}
-
-          {/* Eligibility */}
-          {grant.eligibility && (
-            <div className="border-t border-gray-100 px-6 py-8 sm:px-8">
-              <h2 className="mb-4 text-lg font-bold text-gray-900">
-                신청 자격
-              </h2>
-              <div className="whitespace-pre-wrap text-base leading-relaxed text-gray-600">
-                {grant.eligibility}
+                {grant.summary}
               </div>
             </div>
           )}
 
           {/* Actions */}
           <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-6 sm:flex-row sm:px-8">
-            {grant.source_url && (
+            {grant.detail_url && (
               <a
-                href={grant.source_url}
+                href={grant.detail_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"

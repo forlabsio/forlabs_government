@@ -26,6 +26,7 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     name: Mapped[str | None] = mapped_column(String)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     company_name: Mapped[str | None] = mapped_column(String)
@@ -61,6 +62,7 @@ class GrantProject(Base):
     status: Mapped[str | None] = mapped_column(String, default="접수중")
     organization: Mapped[str | None] = mapped_column(String)
     detail_url: Mapped[str | None] = mapped_column(String)
+    view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     content_embedding = mapped_column(Vector(1536), nullable=True)
     dedup_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

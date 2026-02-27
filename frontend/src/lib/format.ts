@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, parseISO } from "date-fns";
+import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
 /**
  * Calculate D-Day from a deadline date string.
@@ -71,4 +71,16 @@ export function formatAmountRange(
   if (max) return `최대 ${formatAmount(max)}`;
   if (min) return `${formatAmount(min)} 이상`;
   return "금액 미정";
+}
+
+/**
+ * Format a date string as "YY.MM.DD".
+ */
+export function formatShortDate(dateStr: string | undefined): string {
+  if (!dateStr) return "-";
+  try {
+    return format(parseISO(dateStr), "yy.MM.dd");
+  } catch {
+    return "-";
+  }
 }

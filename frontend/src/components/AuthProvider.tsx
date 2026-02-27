@@ -5,23 +5,23 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
-import { createClient } from "@/lib/supabase";
-import type { User, Session } from "@supabase/supabase-js";
+import { fetchMe, type UserInfo } from "@/lib/api";
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: UserInfo | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  session: null,
   loading: true,
-  signOut: async () => {},
+  signOut: () => {},
+  refreshUser: async () => {},
 });
 
 export function useAuth() {
@@ -29,41 +29,43 @@ export function useAuth() {
 }
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const supabase = createClient();
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
+  const loadUser = useCallback(async () => {
+    const token = localStorage.getItem("govgrants_token");
+    if (!token) {
+      setUser(null);
       setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
+      return;
+    }
+    try {
+      const me = await fetchMe(token);
+      setUser(me);
+    } catch {
+      // Token invalid — clear it
+      localStorage.removeItem("govgrants_token");
+      setUser(null);
+    } finally {
       setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  function signOut() {
+    localStorage.removeItem("govgrants_token");
     setUser(null);
-    setSession(null);
+  }
+
+  async function refreshUser() {
+    await loadUser();
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

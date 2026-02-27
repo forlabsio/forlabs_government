@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Menu, X, ChevronDown, User, Bookmark, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function Header() {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, loading, signOut } = useAuth();
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -26,50 +27,60 @@ export default function Header() {
   }, []);
 
   const displayName =
-    user?.user_metadata?.full_name ||
+    user?.name ||
     user?.email?.split("@")[0] ||
     "사용자";
 
   const avatarLetter =
     user?.email?.charAt(0).toUpperCase() || "U";
 
+  function navLinkClass(href: string) {
+    const isActive =
+      href === "/grants"
+        ? pathname === "/grants" || pathname.startsWith("/grants?")
+        : pathname === href;
+    return `text-sm font-medium transition-colors ${
+      isActive ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
+    }`;
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
-            G
-          </div>
-          <span className="text-lg font-bold text-gray-900">
-            정부지원금
+          <span className="text-lg font-bold text-blue-600">
+            ForLabsAI
           </span>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-8 md:flex">
-          <Link
-            href="/grants"
-            className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
-          >
+          <Link href="/grants" className={navLinkClass("/grants")}>
             지원사업 찾기
           </Link>
-          <Link
-            href="/grants?category=자금"
-            className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
-          >
+          <Link href="/grants?category=자금" className={navLinkClass("/grants?category=자금")}>
             자금지원
           </Link>
-          <Link
-            href="/grants?category=R%26D"
-            className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
-          >
+          <Link href="/grants?category=R%26D" className={navLinkClass("/grants?category=R%26D")}>
             R&D
           </Link>
+          <Link href="/grants?category=보조금" className={navLinkClass("/grants?category=보조금")}>
+            보조금
+          </Link>
+          {user && (
+            <Link
+              href="/bookmarks"
+              className={`flex items-center gap-1.5 ${navLinkClass("/bookmarks")}`}
+            >
+              <Bookmark className={`h-4 w-4 ${pathname === "/bookmarks" ? "fill-blue-600" : ""}`} />
+              나의 사업관리
+            </Link>
+          )}
         </nav>
 
         {/* Auth Section (Desktop) */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           {loading ? (
             <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-100" />
           ) : user ? (
@@ -95,22 +106,16 @@ export default function Header() {
                     <User className="h-4 w-4 text-gray-400" />
                     내 프로필
                   </Link>
-                  <Link
-                    href="/mypage/bookmarks"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                  >
-                    <Bookmark className="h-4 w-4 text-gray-400" />
-                    북마크
-                  </Link>
-                  <Link
-                    href="/admin"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                  >
-                    <Shield className="h-4 w-4 text-gray-400" />
-                    관리자
-                  </Link>
+                  {user?.is_admin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <Shield className="h-4 w-4 text-gray-400" />
+                      관리자
+                    </Link>
+                  )}
                   <hr className="my-1 border-gray-100" />
                   <button
                     onClick={() => {
@@ -134,60 +139,79 @@ export default function Header() {
                 로그인
               </Link>
               <Link
-                href="/login"
+                href="/signup"
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
               >
-                시작하기
+                회원가입
               </Link>
             </>
           )}
         </div>
 
         {/* Mobile Menu Button */}
-        <button
-          className="md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? (
-            <X className="h-6 w-6 text-gray-600" />
-          ) : (
-            <Menu className="h-6 w-6 text-gray-600" />
+        <div className="flex items-center gap-3 md:hidden">
+          {user && (
+            <Link
+              href="/bookmarks"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-gray-50"
+            >
+              <Bookmark className={`h-5 w-5 ${pathname === "/bookmarks" ? "fill-blue-600 text-blue-600" : "text-gray-600"}`} />
+            </Link>
           )}
-        </button>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? (
+              <X className="h-6 w-6 text-gray-600" />
+            ) : (
+              <Menu className="h-6 w-6 text-gray-600" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="border-t border-gray-100 bg-white px-4 py-4 md:hidden">
-          <nav className="flex flex-col gap-3">
+          <nav className="flex flex-col gap-1">
             <Link
               href="/grants"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
               onClick={() => setMobileOpen(false)}
             >
               지원사업 찾기
             </Link>
             <Link
               href="/grants?category=자금"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
               onClick={() => setMobileOpen(false)}
             >
               자금지원
             </Link>
             <Link
               href="/grants?category=R%26D"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
               onClick={() => setMobileOpen(false)}
             >
               R&D
             </Link>
+            {user && (
+              <Link
+                href="/bookmarks"
+                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                onClick={() => setMobileOpen(false)}
+              >
+                <Bookmark className="h-4 w-4 fill-blue-600" />
+                나의 사업관리
+              </Link>
+            )}
             <hr className="my-2 border-gray-100" />
             {user ? (
               <>
                 <Link
                   href="/mypage"
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600"
                   onClick={() => setMobileOpen(false)}
                 >
                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
@@ -195,19 +219,12 @@ export default function Header() {
                   </div>
                   {displayName}
                 </Link>
-                <Link
-                  href="/mypage/bookmarks"
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  북마크
-                </Link>
                 <button
                   onClick={() => {
                     setMobileOpen(false);
                     signOut();
                   }}
-                  className="rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-600"
+                  className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600"
                 >
                   로그아웃
                 </button>
@@ -216,17 +233,17 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
-                  className="rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-600"
+                  className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600"
                   onClick={() => setMobileOpen(false)}
                 >
                   로그인
                 </Link>
                 <Link
-                  href="/login"
-                  className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+                  href="/signup"
+                  className="rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white"
                   onClick={() => setMobileOpen(false)}
                 >
-                  시작하기
+                  회원가입
                 </Link>
               </>
             )}

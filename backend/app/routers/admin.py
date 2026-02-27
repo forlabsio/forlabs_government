@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_admin_user
-from app.models import Banner, FetchLog, GrantProject, SearchLog, User
+from app.models import Banner, FetchLog, GrantProject, SearchLog, User, UserBookmark
 from app.schemas import (
+    AdminUserResponse,
     BannerCreate,
     BannerResponse,
     DashboardStats,
@@ -180,3 +181,90 @@ async def trigger_collect(admin: User = Depends(get_admin_user)):
     from app.tasks import run_all_collectors
     run_all_collectors.delay("manual")
     return {"message": "Collection triggered"}
+
+
+# ── User Management ──────────────────────────────────────
+
+
+@router.get("/users")
+async def list_users(
+    search: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all users with bookmark count. Requires admin."""
+    query = select(User)
+    count_query = select(func.count()).select_from(User)
+
+    if search:
+        like = f"%{search}%"
+        condition = (
+            User.email.ilike(like)
+            | User.name.ilike(like)
+            | User.company_name.ilike(like)
+        )
+        query = query.where(condition)
+        count_query = count_query.where(condition)
+
+    query = query.order_by(User.created_at.desc().nullslast())
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    items = []
+    for u in users:
+        bm_result = await db.execute(
+            select(func.count()).select_from(UserBookmark).where(UserBookmark.user_id == u.id)
+        )
+        bm_count = bm_result.scalar() or 0
+        item = AdminUserResponse.model_validate(u)
+        item.bookmark_count = bm_count
+        items.append(item)
+
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/users/{user_id}")
+async def get_user(
+    user_id: uuid.UUID,
+    _admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single user's detail with bookmarks. Requires admin."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    bm_result = await db.execute(
+        select(func.count()).select_from(UserBookmark).where(UserBookmark.user_id == user.id)
+    )
+    bm_count = bm_result.scalar() or 0
+
+    item = AdminUserResponse.model_validate(user)
+    item.bookmark_count = bm_count
+    return item
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: uuid.UUID,
+    _admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a user. Requires admin."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.is_admin:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete admin user")
+    await db.delete(user)
+    await db.commit()
