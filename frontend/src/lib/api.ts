@@ -63,3 +63,82 @@ export async function searchGrants(body: {
   if (!res.ok) throw new Error("Failed to search");
   return res.json();
 }
+
+// ─── Admin API ──────────────────────────────────────────
+
+function authHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+export async function fetchDashboard(token: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/admin/dashboard`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch dashboard");
+  return res.json();
+}
+
+export async function fetchSearchInsights(
+  token: string,
+  days?: number
+): Promise<any> {
+  const query = days ? `?days=${days}` : "";
+  const res = await fetch(`${API_URL}/api/admin/search-insights${query}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch search insights");
+  return res.json();
+}
+
+export async function fetchZeroResults(
+  token: string,
+  days?: number
+): Promise<any> {
+  const query = days ? `?days=${days}` : "";
+  const res = await fetch(`${API_URL}/api/admin/zero-results${query}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch zero results");
+  return res.json();
+}
+
+export async function fetchBanners(token: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/admin/banners`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch banners");
+  return res.json();
+}
+
+export async function createBanner(token: string, data: any): Promise<any> {
+  const res = await fetch(`${API_URL}/api/admin/banners`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create banner");
+  return res.json();
+}
+
+export async function deleteBanner(token: string, id: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/admin/banners/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to delete banner");
+  return res.json();
+}
+
+export async function triggerCollect(token: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/admin/collect`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to trigger collect");
+  return res.json();
+}
