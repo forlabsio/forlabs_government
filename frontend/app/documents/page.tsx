@@ -41,7 +41,7 @@ export default function DocumentsPage() {
       .then((data) => setDocuments(Array.isArray(data) ? data : []))
       .catch(() => setError("Failed to load documents"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-gray-50">

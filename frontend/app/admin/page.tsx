@@ -32,7 +32,7 @@ export default function AdminPage() {
       })
       .then(setStats)
       .catch((err) => setError(err.message));
-  }, []);
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-gray-50">

@@ -4,10 +4,11 @@ interface AuthState {
   token: string | null;
   setToken: (token: string | null) => void;
   logout: () => void;
+  hydrate: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
+  token: null,
   setToken: (token) => {
     if (token) {
       localStorage.setItem("token", token);
@@ -19,5 +20,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem("token");
     set({ token: null });
+  },
+  hydrate: () => {
+    set({ token: localStorage.getItem("token") });
   },
 }));

@@ -38,10 +38,11 @@ async def update_document(
 ):
     result = await db.execute(select(Document).where(Document.id == document_id))
     document = result.scalar_one_or_none()
-    if not document:
+    if not document or (
+        current_user.role not in (UserRole.staff, UserRole.admin)
+        and document.user_id != current_user.id
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    if current_user.role not in (UserRole.staff, UserRole.admin) and document.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     for field, value in doc_in.model_dump(exclude_unset=True).items():
         setattr(document, field, value)
     await db.commit()
