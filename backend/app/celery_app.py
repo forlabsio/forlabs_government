@@ -23,4 +23,8 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(hour=17, minute=0),
         "args": ("17:00",),
     },
+    "curation-8am": {
+        "task": "app.tasks.send_daily_curation",
+        "schedule": crontab(hour=8, minute=0),
+    },
 }
