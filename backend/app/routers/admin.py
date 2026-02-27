@@ -173,3 +173,10 @@ async def delete_banner(
         )
     await db.delete(banner)
     await db.commit()
+
+
+@router.post("/trigger-collect")
+async def trigger_collect(admin: User = Depends(get_admin_user)):
+    from app.tasks import run_all_collectors
+    run_all_collectors.delay("manual")
+    return {"message": "Collection triggered"}
