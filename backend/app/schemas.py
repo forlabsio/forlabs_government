@@ -1,0 +1,164 @@
+# backend/app/schemas.py
+import uuid
+from datetime import date, datetime
+
+from pydantic import BaseModel, ConfigDict, computed_field
+
+
+# ── Grant Schemas ──────────────────────────────────────────────
+
+
+class GrantListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    summary: str | None = None
+    category: str | None = None
+    amount_min: int | None = None
+    amount_max: int | None = None
+    organization: str | None = None
+    end_date: date | None = None
+    status: str | None = None
+    detail_url: str | None = None
+    sources: list[str] = []
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def days_left(self) -> int | None:
+        if self.end_date is None:
+            return None
+        delta = self.end_date - date.today()
+        return max(delta.days, 0)
+
+
+class GrantDetail(GrantListItem):
+    target_industry: list[str] = []
+    target_region: list[str] = []
+    target_age: str | None = None
+    start_date: date | None = None
+    created_at: datetime | None = None
+
+
+class GrantListResponse(BaseModel):
+    items: list[GrantListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+# ── User Schemas ───────────────────────────────────────────────
+
+
+class UserProfile(BaseModel):
+    company_name: str | None = None
+    industry: str | None = None
+    company_age: int | None = None
+    region: str | None = None
+    employee_count: int | None = None
+    revenue_range: str | None = None
+    email_opt_in: bool = True
+
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    name: str | None = None
+    is_admin: bool = False
+    company_name: str | None = None
+    industry: str | None = None
+    company_age: int | None = None
+    region: str | None = None
+
+
+# ── Bookmark Schemas ───────────────────────────────────────────
+
+
+class BookmarkCreate(BaseModel):
+    grant_id: uuid.UUID
+
+
+class BookmarkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    grant_id: uuid.UUID
+    calendar_synced: bool = False
+    created_at: datetime | None = None
+
+
+# ── Search Schemas ─────────────────────────────────────────────
+
+
+class SearchRequest(BaseModel):
+    query: str
+    category: str | None = None
+    region: str | None = None
+    source: str | None = None
+    page: int = 1
+    page_size: int = 20
+
+
+class SearchLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    query_text: str
+    count: int
+
+
+# ── FetchLog Schemas ───────────────────────────────────────────
+
+
+class FetchLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    source: str
+    schedule_time: str
+    status: str
+    total_fetched: int = 0
+    new_count: int = 0
+    duplicate_count: int = 0
+    error_message: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+# ── Banner Schemas ─────────────────────────────────────────────
+
+
+class BannerCreate(BaseModel):
+    title: str
+    image_url: str
+    link_url: str
+    target_industry: list[str] = []
+    target_region: list[str] = []
+    start_date: date | None = None
+    end_date: date | None = None
+
+
+class BannerResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    image_url: str
+    link_url: str
+    target_industry: list[str] = []
+    target_region: list[str] = []
+    is_active: bool = True
+    impressions: int = 0
+    clicks: int = 0
+
+
+# ── Dashboard Schemas ──────────────────────────────────────────
+
+
+class DashboardStats(BaseModel):
+    total_grants: int
+    active_grants: int
+    total_users: int
+    today_searches: int
+    fetch_logs_today: list[FetchLogResponse] = []
