@@ -11,7 +11,7 @@ from app.database import Base
 from app.models import *  # noqa: F401,F403
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url.replace("+asyncpg", ""))
+config.set_main_option("sqlalchemy.url", settings.async_database_url.replace("+asyncpg", ""))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -37,7 +37,7 @@ async def run_async_migrations():
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        url=settings.database_url,
+        url=settings.async_database_url,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
