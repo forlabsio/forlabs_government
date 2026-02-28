@@ -66,6 +66,7 @@ def upgrade() -> None:
     sa.Column('status', sa.String(), nullable=True),
     sa.Column('organization', sa.String(), nullable=True),
     sa.Column('detail_url', sa.String(), nullable=True),
+    sa.Column('view_count', sa.Integer(), nullable=False, server_default='0'),
     # content_embedding VECTOR(1536) - deferred until pgvector is available
     sa.Column('dedup_hash', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
