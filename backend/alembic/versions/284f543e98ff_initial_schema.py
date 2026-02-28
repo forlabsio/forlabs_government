@@ -10,7 +10,6 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-import pgvector.sqlalchemy.vector
 
 # revision identifiers, used by Alembic.
 revision: str = '284f543e98ff'
@@ -67,7 +66,7 @@ def upgrade() -> None:
     sa.Column('status', sa.String(), nullable=True),
     sa.Column('organization', sa.String(), nullable=True),
     sa.Column('detail_url', sa.String(), nullable=True),
-    sa.Column('content_embedding', pgvector.sqlalchemy.vector.VECTOR(dim=1536), nullable=True),
+    # content_embedding VECTOR(1536) - deferred until pgvector is available
     sa.Column('dedup_hash', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -85,7 +84,7 @@ def upgrade() -> None:
     sa.Column('region', sa.String(), nullable=True),
     sa.Column('employee_count', sa.Integer(), nullable=True),
     sa.Column('revenue_range', sa.String(), nullable=True),
-    sa.Column('profile_embedding', pgvector.sqlalchemy.vector.VECTOR(dim=1536), nullable=True),
+    # profile_embedding VECTOR(1536) - deferred until pgvector is available
     sa.Column('email_opt_in', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
