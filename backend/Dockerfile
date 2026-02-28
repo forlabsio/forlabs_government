@@ -9,5 +9,4 @@ RUN pip install --no-cache-dir $(python3 -c "import tomllib; print(' '.join(toml
 # Copy source code
 COPY . .
 
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
