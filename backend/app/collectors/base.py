@@ -81,14 +81,7 @@ class BaseCollector(ABC):
                         source_id=source_id, raw_data=raw,
                     ))
 
-                    # Generate embedding for new grant
-                    from app.embedding import generate_grant_embedding
-
-                    embedding = await generate_grant_embedding(
-                        grant.title, grant.summary, grant.category, grant.organization
-                    )
-                    if embedding:
-                        grant.content_embedding = embedding
+                    # Embedding generation deferred (pgvector not available on Railway PG)
 
                     log.new_count += 1
 
