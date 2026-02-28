@@ -4,7 +4,12 @@ from celery.schedules import crontab
 
 from app.config import settings
 
-celery_app = Celery("govgrants", broker=settings.redis_url, backend=settings.redis_url)
+celery_app = Celery(
+    "govgrants",
+    broker=settings.redis_url,
+    backend=settings.redis_url,
+    include=["app.tasks"],
+)
 
 celery_app.conf.timezone = "Asia/Seoul"
 celery_app.conf.beat_schedule = {
