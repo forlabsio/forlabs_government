@@ -343,10 +343,10 @@ export default function HomePage() {
             {[
               { name: "기업마당", active: true },
               { name: "NTIS", active: true },
-              { name: "K-Startup", active: false },
+              { name: "K-Startup", active: true },
               { name: "KOCCA", active: false },
-              { name: "보조금24", active: false },
-              { name: "중소벤처24", active: false },
+              { name: "보조금24", active: true },
+              { name: "중소벤처24", active: true },
             ].map((source) => (
               <span
                 key={source.name}
