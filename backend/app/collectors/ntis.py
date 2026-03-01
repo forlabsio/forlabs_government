@@ -1,4 +1,5 @@
 # backend/app/collectors/ntis.py
+import asyncio
 import logging
 import re
 from datetime import date
@@ -21,75 +22,97 @@ SEARCH_KEYWORDS = [
     "창업",
 ]
 
+PAGE_SIZE = 100
+MAX_PER_KEYWORD = 1000  # safety cap per keyword
+PAGE_DELAY = 0.3  # seconds between API calls
+
 
 class NtisCollector(BaseCollector):
     source_name = "ntis"
 
     async def fetch_raw(self) -> list[dict]:
-        """Fetch R&D projects from NTIS OpenAPI (XML response)."""
+        """Fetch R&D projects from NTIS OpenAPI (XML response).
+
+        Searches current year and previous year to catch recently
+        registered projects whose ProjectYear may still be last year.
+        """
         url = "https://www.ntis.go.kr/rndopen/openApi/public_project"
         all_items: list[dict] = []
         seen_ids: set[str] = set()
+        current_year = date.today().year
+
+        # Search both current year and previous year
+        year_filters = [
+            f"PY={current_year}/SAME",
+            f"PY={current_year - 1}/SAME",
+        ]
 
         async with httpx.AsyncClient(timeout=60) as client:
-            for keyword in SEARCH_KEYWORDS:
-                start = 1
-                page_size = 100
+            for year_filter in year_filters:
+                for keyword in SEARCH_KEYWORDS:
+                    start = 1
 
-                while True:
-                    params = {
-                        "apprvKey": settings.ntis_api_key,
-                        "collection": "project",
-                        "SRWR": keyword,
-                        "searchFd": "BI",
-                        "searchRnkn": "DATE/DESC",
-                        "startPosition": start,
-                        "displayCnt": page_size,
-                        "addQuery": f"PY={date.today().year}/SAME",
-                        "cmbnApiYn": "Y",
-                    }
-                    try:
-                        resp = await client.get(url, params=params)
-                        resp.raise_for_status()
-                    except httpx.HTTPError as e:
-                        logger.warning(f"NTIS API error for keyword '{keyword}': {e}")
-                        break
+                    while True:
+                        params = {
+                            "apprvKey": settings.ntis_api_key,
+                            "collection": "project",
+                            "SRWR": keyword,
+                            "searchFd": "BI",
+                            "searchRnkn": "DATE/DESC",
+                            "startPosition": start,
+                            "displayCnt": PAGE_SIZE,
+                            "addQuery": year_filter,
+                            "cmbnApiYn": "Y",
+                        }
+                        try:
+                            resp = await client.get(url, params=params)
+                            resp.raise_for_status()
+                        except httpx.HTTPError as e:
+                            logger.warning(
+                                "NTIS API error for keyword '%s' (filter=%s): %s",
+                                keyword, year_filter, e,
+                            )
+                            break
 
-                    items = self._parse_xml(resp.text)
-                    if not items:
-                        break
+                        items, total_hits = self._parse_xml(resp.text)
+                        if not items:
+                            break
 
-                    for item in items:
-                        pid = item.get("ProjectNumber", "")
-                        if pid and pid not in seen_ids:
-                            seen_ids.add(pid)
-                            all_items.append(item)
+                        for item in items:
+                            pid = item.get("ProjectNumber", "")
+                            if pid and pid not in seen_ids:
+                                seen_ids.add(pid)
+                                all_items.append(item)
 
-                    # Check if we got fewer results than requested (last page)
-                    if len(items) < page_size:
-                        break
+                        # Check if we got fewer results than requested (last page)
+                        if len(items) < PAGE_SIZE:
+                            break
 
-                    start += page_size
+                        start += PAGE_SIZE
 
-                    # Safety limit per keyword
-                    if start > 500:
-                        break
+                        # Safety limit per keyword
+                        if start > MAX_PER_KEYWORD:
+                            break
 
-        logger.info(f"NTIS fetched {len(all_items)} unique projects")
+                        await asyncio.sleep(PAGE_DELAY)
+
+        logger.info("NTIS fetched %d unique projects", len(all_items))
         return all_items
 
     @staticmethod
-    def _parse_xml(xml_text: str) -> list[dict]:
-        """Parse NTIS XML response into list of dicts."""
+    def _parse_xml(xml_text: str) -> tuple[list[dict], int]:
+        """Parse NTIS XML response into list of dicts + total hits."""
         try:
             root = ElementTree.fromstring(xml_text)
         except ElementTree.ParseError:
             logger.error("Failed to parse NTIS XML response")
-            return []
+            return [], 0
+
+        total_hits = int(_text(root, "TOTALHITS") or "0")
 
         result_set = root.find("RESULTSET")
         if result_set is None:
-            return []
+            return [], total_hits
 
         items = []
         for hit in result_set.findall("HIT"):
@@ -167,7 +190,7 @@ class NtisCollector(BaseCollector):
 
             items.append(item)
 
-        return items
+        return items, total_hits
 
     def normalize(self, raw: dict) -> dict:
         title = _strip_highlight(raw.get("ProjectTitle_Korean", ""))
