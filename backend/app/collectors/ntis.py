@@ -41,10 +41,8 @@ class NtisCollector(BaseCollector):
         seen_ids: set[str] = set()
         current_year = date.today().year
 
-        # Search both current year and previous year
         year_filters = [
             f"PY={current_year}/SAME",
-            f"PY={current_year - 1}/SAME",
         ]
 
         async with httpx.AsyncClient(timeout=60) as client:
@@ -75,6 +73,11 @@ class NtisCollector(BaseCollector):
                             break
 
                         items, total_hits = self._parse_xml(resp.text)
+                        if start == 1:
+                            logger.info(
+                                "NTIS '%s' (%s): totalHits=%d parsed=%d respLen=%d",
+                                keyword, year_filter, total_hits, len(items), len(resp.text),
+                            )
                         if not items:
                             break
 
