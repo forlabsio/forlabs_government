@@ -30,6 +30,15 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/debug/outbound-ip")
+async def debug_outbound_ip():
+    """Check Railway's outbound IP address."""
+    import httpx
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get("https://api.ipify.org?format=json")
+        return resp.json()
+
+
 @app.get("/debug/ntis-test")
 async def debug_ntis_test():
     """Temporary endpoint to diagnose NTIS API response from Railway."""
