@@ -49,7 +49,7 @@ export default function LoginPage() {
             로그인
           </h1>
           <p className="mt-2 text-sm text-gray-500">
-            맞춤형 지원사업 알림과 북마크를 이용하세요
+            맞춤형 지원사업 알림과 관심 사업 관리를 이용하세요
           </p>
         </div>
 

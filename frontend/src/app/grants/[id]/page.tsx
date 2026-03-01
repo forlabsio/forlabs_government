@@ -19,6 +19,7 @@ import {
   Tag,
   Banknote,
 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function GrantDetailPage({
   params,
@@ -26,6 +27,7 @@ export default function GrantDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { user } = useAuth();
   const [grant, setGrant] = useState<Grant | null>(null);
   const [relatedGrants, setRelatedGrants] = useState<Grant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,10 +220,12 @@ export default function GrantDetailPage({
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}
-            <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
-              <Bookmark className="h-4 w-4" />
-              북마크
-            </button>
+            {user && (
+              <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+                <Bookmark className="h-4 w-4" />
+                관심 사업
+              </button>
+            )}
           </div>
         </article>
 

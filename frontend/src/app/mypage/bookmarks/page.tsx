@@ -87,7 +87,7 @@ export default function BookmarksPage() {
                   className="flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700"
                 >
                   <Bookmark className="h-4 w-4" />
-                  북마크
+                  관심 사업
                 </Link>
                 <button
                   onClick={signOut}
@@ -103,7 +103,7 @@ export default function BookmarksPage() {
           {/* Right Content */}
           <div className="flex-1">
             <div className="mb-6">
-              <h1 className="text-xl font-bold text-gray-900">북마크</h1>
+              <h1 className="text-xl font-bold text-gray-900">관심 사업</h1>
               <p className="mt-1 text-sm text-gray-500">
                 관심있는 지원사업을 모아보세요
               </p>
@@ -128,7 +128,7 @@ export default function BookmarksPage() {
                         e.preventDefault();
                         handleRemoveBookmark(grant.id);
                       }}
-                      title="북마크 제거"
+                      title="관심 사업 제거"
                       className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm transition-colors hover:bg-red-50"
                     >
                       <BookmarkX className="h-4 w-4 text-red-500" />
@@ -140,10 +140,10 @@ export default function BookmarksPage() {
               <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
                 <Bookmark className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                 <p className="mb-2 text-lg font-medium text-gray-600">
-                  아직 북마크한 지원사업이 없습니다
+                  아직 등록한 관심 사업이 없습니다
                 </p>
                 <p className="mb-6 text-sm text-gray-400">
-                  관심있는 지원사업을 북마크하면 여기에 표시됩니다
+                  관심있는 지원사업을 등록하면 여기에 표시됩니다
                 </p>
                 <Link
                   href="/grants"

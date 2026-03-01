@@ -126,7 +126,7 @@ export default function BookmarksPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">나의 사업관리</h1>
           <p className="mt-1 text-sm text-gray-500">
-            북마크한 지원사업의 일정과 현황을 한눈에 관리하세요
+            관심 사업의 일정과 현황을 한눈에 관리하세요
           </p>
         </div>
 
@@ -200,7 +200,7 @@ export default function BookmarksPage() {
               아직 관리중인 지원사업이 없습니다
             </h2>
             <p className="mx-auto mb-8 max-w-sm text-sm text-gray-500">
-              지원사업 목록에서 관심있는 사업을 북마크하면
+              지원사업 목록에서 관심있는 사업을 등록하면
               <br />
               마감일 관리와 현황 확인이 편리해집니다
             </p>
@@ -320,7 +320,7 @@ export default function BookmarksPage() {
                       <button
                         type="button"
                         onClick={() => handleRemove(grant.id)}
-                        title="북마크 제거"
+                        title="관심 사업 제거"
                         className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
                       >
                         <BookmarkX className="h-4.5 w-4.5" />

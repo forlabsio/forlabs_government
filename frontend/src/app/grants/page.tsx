@@ -572,7 +572,7 @@ function GrantListContent() {
                             handleBookmark(grant.id);
                           }}
                           className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-lg p-1.5 text-gray-300 transition-all hover:bg-blue-50 hover:text-blue-500 group-hover:lg:block"
-                          title="북마크"
+                          title="관심 사업"
                         >
                           <Bookmark className="h-4 w-4" />
                         </button>
