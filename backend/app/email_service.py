@@ -48,7 +48,7 @@ def send_verification_email(to_email: str, code: str) -> str | None:
 
     try:
         result = resend.Emails.send({
-            "from": "GovGrants <noreply@govgrants.kr>",
+            "from": "GovGrants <noreply@forlabs.io>",
             "to": [to_email],
             "subject": f"[GovGrants] 이메일 인증코드: {code}",
             "html": html,
@@ -126,7 +126,7 @@ def send_curation_email(
 
     try:
         result = resend.Emails.send({
-            "from": "GovGrants <noreply@govgrants.kr>",
+            "from": "GovGrants <noreply@forlabs.io>",
             "to": [to_email],
             "subject": f"[GovGrants] {name}님을 위한 오늘의 맞춤 지원사업 ({len(grants)}건)",
             "html": html,
