@@ -1,7 +1,6 @@
 # backend/app/collectors/kstartup.py
 import asyncio
 import logging
-import xml.etree.ElementTree as ET
 
 import httpx
 
@@ -10,28 +9,18 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# New API (kisedKstartupService01) returns XML with <col name="..."> structure.
-# We fetch only currently-recruiting announcements (rcrt_prgs_yn=Y) to avoid
-# pulling the full 27k+ historical records every run.
+# API guide (v2.0, 2025-01-08) specifies:
+#   - Endpoint: getAnnouncementInformation01
+#   - Pagination: page / perPage (NOT pageNo / numOfRows)
+#   - Format selector: returnType=json (NOT type=json)
+#   - Rcrt_prgs_yn is a request parameter but does NOT filter server-side;
+#     all 27k+ records are returned regardless. Client-side filtering required.
 BASE_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01"
 PAGE_SIZE = 100
 MAX_PAGES = 30  # safety cap: 3,000 items max per run
-PAGE_DELAY = 0.5  # seconds between API calls to avoid rate limiting
-
-
-def _parse_xml_items(xml_text: str) -> tuple[list[dict], int]:
-    """Parse the custom XML format into a list of dicts + totalCount."""
-    root = ET.fromstring(xml_text)
-    total = int(root.findtext("totalCount") or "0")
-    items = []
-    for item_el in root.findall(".//item"):
-        row = {}
-        for col in item_el.findall("col"):
-            name = col.get("name")
-            if name:
-                row[name] = (col.text or "").strip()
-        items.append(row)
-    return items, total
+PAGE_DELAY = 0.3  # seconds between API calls to avoid rate limiting
+# Stop scanning after this many consecutive pages with zero recruiting items
+EMPTY_PAGE_LIMIT = 3
 
 
 class KstartupCollector(BaseCollector):
@@ -40,14 +29,15 @@ class KstartupCollector(BaseCollector):
     async def fetch_raw(self) -> list[dict]:
         all_items: list[dict] = []
         page = 1
+        consecutive_empty = 0
 
         async with httpx.AsyncClient(timeout=30) as client:
             while page <= MAX_PAGES:
                 params = {
-                    "serviceKey": settings.kstartup_api_key,
-                    "type": "json",  # required param even though response is XML
-                    "numOfRows": PAGE_SIZE,
-                    "pageNo": page,
+                    "ServiceKey": settings.kstartup_api_key,
+                    "returnType": "json",
+                    "perPage": PAGE_SIZE,
+                    "page": page,
                 }
                 try:
                     resp = await client.get(BASE_URL, params=params)
@@ -59,21 +49,37 @@ class KstartupCollector(BaseCollector):
                     logger.warning("K-Startup: HTTP error at page %d, stopping", page)
                     break
 
-                items, total = _parse_xml_items(resp.text)
+                try:
+                    data = resp.json()
+                except Exception:
+                    logger.warning("K-Startup: failed to parse JSON at page %d, stopping", page)
+                    break
+
+                items = data.get("data", [])
                 if not items:
                     break
 
-                # Only keep currently-recruiting announcements
-                for item in items:
-                    if item.get("rcrt_prgs_yn") == "Y":
-                        all_items.append(item)
+                # Filter: only keep currently-recruiting announcements
+                recruiting = [item for item in items if item.get("rcrt_prgs_yn") == "Y"]
+                all_items.extend(recruiting)
 
+                if not recruiting:
+                    consecutive_empty += 1
+                    if consecutive_empty >= EMPTY_PAGE_LIMIT:
+                        logger.info(
+                            "K-Startup: %d consecutive pages with no recruiting items, stopping",
+                            EMPTY_PAGE_LIMIT,
+                        )
+                        break
+                else:
+                    consecutive_empty = 0
+
+                total = data.get("totalCount", 0)
                 fetched_so_far = page * PAGE_SIZE
                 if fetched_so_far >= total:
                     break
                 page += 1
 
-                # Rate limit: small delay between pages
                 await asyncio.sleep(PAGE_DELAY)
 
         logger.info(
@@ -85,15 +91,15 @@ class KstartupCollector(BaseCollector):
 
     def normalize(self, raw: dict) -> dict:
         # Parse region: can be comma-separated
-        region_str = raw.get("supt_regin", "")
+        region_str = raw.get("supt_regin") or ""
         regions = [r.strip() for r in region_str.split(",") if r.strip()] if region_str else []
 
         # Parse target industry from support classification
-        biz_cls = raw.get("supt_biz_clsfc", "")
+        biz_cls = raw.get("supt_biz_clsfc") or ""
         industries = [biz_cls] if biz_cls else []
 
         # Target age
-        age_str = raw.get("biz_trgt_age", "")
+        age_str = raw.get("biz_trgt_age") or ""
 
         # Build summary from announcement content + target info
         summary_parts = []
@@ -107,12 +113,12 @@ class KstartupCollector(BaseCollector):
         org = raw.get("pbanc_ntrp_nm") or raw.get("biz_prch_dprt_nm") or "K-Startup"
 
         # Detail URL
-        detail_url = raw.get("detl_pg_url", "")
+        detail_url = raw.get("detl_pg_url") or ""
         if detail_url and not detail_url.startswith("http"):
             detail_url = f"https://{detail_url}"
 
         return {
-            "title": raw.get("biz_pbanc_nm", ""),
+            "title": raw.get("biz_pbanc_nm") or "",
             "summary": summary[:2000] if summary else "",
             "category": self._map_category(biz_cls),
             "amount_min": None,
@@ -125,7 +131,7 @@ class KstartupCollector(BaseCollector):
             "status": "접수중" if raw.get("rcrt_prgs_yn") == "Y" else "마감",
             "organization": org,
             "detail_url": detail_url,
-            "source_id": raw.get("pbanc_sn", ""),
+            "source_id": str(raw.get("pbanc_sn") or ""),
         }
 
     @staticmethod
@@ -145,6 +151,7 @@ class KstartupCollector(BaseCollector):
             "R&D": "R&D",
             "판로": "수출",
             "네트워크": "창업",
+            "글로벌": "수출",
         }
         for key, val in mapping.items():
             if key in biz_cls:
@@ -158,7 +165,7 @@ class KstartupCollector(BaseCollector):
         from datetime import date
 
         try:
-            clean = date_str.replace("-", "").replace(".", "").replace("/", "")[:8]
+            clean = str(date_str).replace("-", "").replace(".", "").replace("/", "").replace(" ", "")[:8]
             if len(clean) < 8:
                 return None
             return date(int(clean[:4]), int(clean[4:6]), int(clean[6:8]))
