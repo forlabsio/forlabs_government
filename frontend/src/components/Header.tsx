@@ -50,7 +50,7 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <span className="text-lg font-bold text-blue-600">
-            ForLabsAI
+            Danbi.Day
           </span>
         </Link>
 
