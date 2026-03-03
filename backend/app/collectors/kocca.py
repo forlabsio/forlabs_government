@@ -1,5 +1,6 @@
 # backend/app/collectors/kocca.py
 import logging
+import re
 
 import httpx
 
@@ -76,8 +77,22 @@ class KoccaCollector(BaseCollector):
             "status": self._map_status(cate),
             "organization": "한국콘텐츠진흥원",
             "detail_url": link,
-            "source_id": raw.get("intcNoSeq") or "",
+            "source_id": self._extract_source_id(raw),
         }
+
+    @staticmethod
+    def _extract_source_id(raw: dict) -> str:
+        """Extract unique ID from link URL (intcNo param) since intcNoSeq is not unique."""
+        link = raw.get("link") or ""
+        match = re.search(r"intcNo=([^&]+)", link)
+        if match:
+            return match.group(1)
+        # Fallback: combine intcNoSeq with title hash for uniqueness
+        seq = raw.get("intcNoSeq") or ""
+        title = raw.get("title") or ""
+        if seq and title:
+            return f"{seq}_{hash(title) & 0xFFFFFFFF:08x}"
+        return seq
 
     @staticmethod
     def _map_category(cate: str) -> str:
