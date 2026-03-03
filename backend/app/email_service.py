@@ -41,16 +41,16 @@ def send_verification_email(to_email: str, code: str) -> str | None:
             </p>
         </div>
         <div style="padding:16px; text-align:center; color:#9ca3af; font-size:12px;">
-            <p>이 메일은 GovGrants에서 발송되었습니다.</p>
+            <p>이 메일은 Danbi.Day에서 발송되었습니다.</p>
         </div>
     </div>
     """
 
     try:
         result = resend.Emails.send({
-            "from": "GovGrants <noreply@forlabs.io>",
+            "from": "Danbi.Day <noreply@forlabs.io>",
             "to": [to_email],
-            "subject": f"[GovGrants] 이메일 인증코드: {code}",
+            "subject": f"[오늘의단비] 이메일 인증코드: {code}",
             "html": html,
         })
         logger.info(f"Verification email sent to {to_email}: {result}")
@@ -118,7 +118,7 @@ def send_curation_email(
             </div>
         </div>
         <div style="padding:16px; text-align:center; color:#9ca3af; font-size:12px;">
-            <p>이 메일은 GovGrants에서 발송되었습니다.</p>
+            <p>이 메일은 Danbi.Day에서 발송되었습니다.</p>
             <a href="https://govgrants.kr/mypage" style="color:#9ca3af;">수신 설정 변경</a>
         </div>
     </div>
@@ -126,9 +126,9 @@ def send_curation_email(
 
     try:
         result = resend.Emails.send({
-            "from": "GovGrants <noreply@forlabs.io>",
+            "from": "Danbi.Day <noreply@forlabs.io>",
             "to": [to_email],
-            "subject": f"[GovGrants] {name}님을 위한 오늘의 맞춤 지원사업 ({len(grants)}건)",
+            "subject": f"[오늘의단비] {name}님을 위한 오늘의 맞춤 지원사업 ({len(grants)}건)",
             "html": html,
         })
         logger.info(f"Curation email sent to {to_email}: {result}")
