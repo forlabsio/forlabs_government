@@ -344,7 +344,7 @@ export default function HomePage() {
               { name: "기업마당", active: true },
               { name: "NTIS", active: true },
               { name: "K-Startup", active: true },
-              { name: "KOCCA", active: false },
+              { name: "KOCCA", active: true },
               { name: "보조금24", active: true },
               { name: "중소벤처24", active: true },
             ].map((source) => (
@@ -363,6 +363,15 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-100 bg-white py-6">
+        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
+          <p className="text-xs text-gray-400">
+            © 2026 ForLabs. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
