@@ -26,7 +26,6 @@ const TABS: { key: Tab; label: string; icon: typeof Clock }[] = [
 
 const SOURCE_LABELS: Record<string, string> = {
   bizinfo: "기업마당",
-  ntis: "NTIS",
   kocca: "KOCCA",
   kstartup: "K-Startup",
   subsidy24: "보조금24",
@@ -35,7 +34,6 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const SOURCE_COLORS: Record<string, string> = {
   bizinfo: "text-blue-700 bg-blue-50",
-  ntis: "text-green-700 bg-green-50",
   kocca: "text-orange-700 bg-orange-50",
   kstartup: "text-indigo-700 bg-indigo-50",
   subsidy24: "text-pink-700 bg-pink-50",
@@ -342,7 +340,6 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             {[
               { name: "기업마당", active: true },
-              { name: "NTIS", active: true },
               { name: "K-Startup", active: true },
               { name: "KOCCA", active: true },
               { name: "보조금24", active: true },

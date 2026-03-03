@@ -101,7 +101,6 @@ export default function GrantDetailPage({
 
   const SOURCE_LABELS: Record<string, string> = {
     bizinfo: "기업마당",
-    ntis: "NTIS",
     kocca: "KOCCA",
     kstartup: "K-Startup",
     subsidy24: "보조금24",

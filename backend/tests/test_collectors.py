@@ -5,7 +5,6 @@ from app.collectors.base import BaseCollector
 from app.collectors.bizinfo import BizinfoCollector
 from app.collectors.kocca import KoccaCollector
 from app.collectors.kstartup import KstartupCollector
-from app.collectors.ntis import NtisCollector
 from app.collectors.smes import SmesCollector
 from app.collectors.subsidy24 import Subsidy24Collector
 
@@ -45,51 +44,6 @@ def test_bizinfo_parse_date_edge_cases():
     assert collector._parse_date("") is None
     assert collector._parse_date("20260315") == date(2026, 3, 15)
     assert collector._parse_date("2026.03.15") == date(2026, 3, 15)
-
-
-def test_ntis_normalize():
-    collector = NtisCollector()
-    raw = {
-        "projNm": "AI 기반 신약 개발 플랫폼 구축",
-        "projAbstrct": "인공지능을 활용한 신약 후보물질 탐색 기술 개발",
-        "sstcCodeNm": "바이오/의료",
-        "govBudget": 500000000,
-        "totBudget": 800000000,
-        "projBeginDt": "2026-01-01",
-        "projEndDt": "2026-12-31",
-        "projSttusNm": "수행중",
-        "rcorgNm": "한국생명공학연구원",
-        "detailUrl": "https://www.ntis.go.kr/project/123",
-        "projNo": "NTIS_2026_001",
-    }
-    result = collector.normalize(raw)
-    assert result["title"] == "AI 기반 신약 개발 플랫폼 구축"
-    assert result["category"] == "R&D"
-    assert result["amount_min"] == 500000000
-    assert result["amount_max"] == 800000000
-    assert result["start_date"] == date(2026, 1, 1)
-    assert result["end_date"] == date(2026, 12, 31)
-    assert result["status"] == "진행중"
-    assert result["organization"] == "한국생명공학연구원"
-    assert result["source_id"] == "NTIS_2026_001"
-    assert "바이오/의료" in result["target_industry"]
-
-
-def test_ntis_normalize_minimal():
-    """Test NTIS normalize with missing optional fields."""
-    collector = NtisCollector()
-    raw = {
-        "projNm": "기초연구과제",
-        "projNo": "NTIS_MIN",
-    }
-    result = collector.normalize(raw)
-    assert result["title"] == "기초연구과제"
-    assert result["source_id"] == "NTIS_MIN"
-    assert result["summary"] == ""
-    assert result["amount_min"] is None
-    assert result["amount_max"] is None
-    assert result["start_date"] is None
-    assert result["end_date"] is None
 
 
 def test_kocca_normalize():
@@ -276,13 +230,12 @@ def test_smes_normalize_minimal():
 
 
 def test_registry_has_all_collectors():
-    """Test that the registry contains all 6 collectors."""
+    """Test that the registry contains all 5 collectors."""
     from app.collectors.registry import ALL_COLLECTORS
 
-    assert len(ALL_COLLECTORS) == 6
+    assert len(ALL_COLLECTORS) == 5
     source_names = [c.source_name for c in ALL_COLLECTORS]
     assert "bizinfo" in source_names
-    assert "ntis" in source_names
     assert "kocca" in source_names
     assert "kstartup" in source_names
     assert "subsidy24" in source_names

@@ -4,7 +4,6 @@ import type { Grant } from "@/lib/api";
 
 const SOURCE_COLORS: Record<string, string> = {
   bizinfo: "bg-blue-50 text-blue-700",
-  ntis: "bg-green-50 text-green-700",
   kocca: "bg-orange-50 text-orange-700",
   kstartup: "bg-indigo-50 text-indigo-700",
   subsidy24: "bg-pink-50 text-pink-700",
@@ -14,7 +13,6 @@ const SOURCE_COLORS: Record<string, string> = {
 
 const SOURCE_LABELS: Record<string, string> = {
   bizinfo: "기업마당",
-  ntis: "NTIS",
   kocca: "KOCCA",
   kstartup: "K-Startup",
   subsidy24: "보조금24",

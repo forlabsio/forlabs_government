@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     admin_email: str = ""
 
     bizinfo_api_key: str = ""
-    ntis_api_key: str = ""
     kocca_api_key: str = ""
     kstartup_api_key: str = ""
     subsidy24_api_key: str = ""
