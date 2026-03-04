@@ -19,7 +19,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 
-type SortKey = "deadline" | "recent" | "amount";
+type SortKey = "deadline" | "recent";
 
 export default function BookmarksPage() {
   const { user, loading: authLoading } = useAuth();
@@ -85,10 +85,6 @@ export default function BookmarksPage() {
           if (!b.created_at) return -1;
           return b.created_at.localeCompare(a.created_at);
         });
-      case "amount":
-        return list.sort(
-          (a, b) => (b.amount_max || 0) - (a.amount_max || 0)
-        );
       default:
         return list;
     }
@@ -171,7 +167,6 @@ export default function BookmarksPage() {
               {([
                 { key: "deadline", label: "마감순" },
                 { key: "recent", label: "최신순" },
-                { key: "amount", label: "금액순" },
               ] as { key: SortKey; label: string }[]).map((opt) => (
                 <button
                   key={opt.key}

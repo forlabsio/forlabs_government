@@ -7,7 +7,6 @@ import { fetchGrants, searchGrants, type Grant } from "@/lib/api";
 import {
   formatDDay,
   getDDay,
-  formatAmountRange,
   formatShortDate,
 } from "@/lib/format";
 import {
@@ -41,7 +40,6 @@ const CATEGORIES = [
 const SORTS = [
   { label: "마감순", value: "deadline" },
   { label: "최신순", value: "recent" },
-  { label: "금액순", value: "amount" },
 ];
 
 const SOURCES = [
@@ -398,11 +396,10 @@ function GrantListContent() {
             /* ===== LIST VIEW ===== */
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
               {/* Table header - desktop */}
-              <div className="hidden border-b border-gray-100 bg-gray-50/50 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider text-gray-400 lg:grid lg:grid-cols-24 lg:gap-3">
+              <div className="hidden border-b border-gray-100 bg-gray-50/50 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider text-gray-400 lg:grid lg:grid-cols-22 lg:gap-3">
                 <div className="col-span-2 text-center">D-Day</div>
                 <div className="col-span-10 text-center">사업명</div>
                 <div className="col-span-3 text-center">기관</div>
-                <div className="col-span-2 text-center">지원금</div>
                 <div className="col-span-3 text-center">기간</div>
                 <div className="col-span-2 text-center">출처</div>
                 <div className="col-span-2 text-center">상태</div>
@@ -414,10 +411,6 @@ function GrantListContent() {
                   const ddayText = formatDDay(grant.end_date);
                   const isUrgent = dday !== null && dday >= -7 && dday <= 0;
                   const isClosed = dday !== null && dday > 0;
-                  const amount = formatAmountRange(
-                    grant.amount_min,
-                    grant.amount_max
-                  );
                   const src = grant.sources?.[0] || "default";
 
                   return (
@@ -453,11 +446,6 @@ function GrantListContent() {
                                   {grant.organization}
                                 </span>
                               )}
-                              {amount && amount !== "금액 미정" && (
-                                <span className="shrink-0 font-medium text-blue-600">
-                                  {amount}
-                                </span>
-                              )}
                             </div>
                             <div className="mt-0.5 flex items-center gap-2 text-[10px] text-gray-400">
                               <span className="flex items-center gap-0.5">
@@ -481,7 +469,7 @@ function GrantListContent() {
                         </div>
 
                         {/* Desktop */}
-                        <div className="hidden items-center gap-3 px-5 py-2.5 lg:grid lg:grid-cols-24">
+                        <div className="hidden items-center gap-3 px-5 py-2.5 lg:grid lg:grid-cols-22">
                           {/* D-Day */}
                           <div className="col-span-2 text-center">
                             <span
@@ -515,16 +503,6 @@ function GrantListContent() {
                               <Building2 className="h-3 w-3 shrink-0" />
                               {grant.organization || "-"}
                             </p>
-                          </div>
-                          {/* Amount */}
-                          <div className="col-span-2 text-right">
-                            {amount && amount !== "금액 미정" ? (
-                              <span className="text-xs font-bold text-blue-600">
-                                {amount}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-300">-</span>
-                            )}
                           </div>
                           {/* Period (start ~ end) */}
                           <div className="col-span-3 text-center text-[11px] text-gray-400">
@@ -587,10 +565,6 @@ function GrantListContent() {
                 const dday = getDDay(grant.end_date);
                 const isUrgent = dday !== null && dday >= -7 && dday <= 0;
                 const isClosed = dday !== null && dday > 0;
-                const amount = formatAmountRange(
-                  grant.amount_min,
-                  grant.amount_max
-                );
                 const src = grant.sources?.[0] || "default";
 
                 return (
@@ -644,11 +618,6 @@ function GrantListContent() {
                         </span>
                       </div>
                       <div className="mt-auto" />
-                      {amount && amount !== "금액 미정" && (
-                        <p className="mb-2 text-base font-bold text-blue-600">
-                          {amount}
-                        </p>
-                      )}
                       <div className="flex items-center gap-1.5">
                         {grant.category && (
                           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">

@@ -6,7 +6,6 @@ import { fetchGrantDetail, fetchGrants, type Grant } from "@/lib/api";
 import {
   formatDDay,
   getDDayColor,
-  formatAmountRange,
 } from "@/lib/format";
 import GrantCard from "@/components/GrantCard";
 import {
@@ -17,7 +16,6 @@ import {
   MapPin,
   ExternalLink,
   Tag,
-  Banknote,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -97,7 +95,6 @@ export default function GrantDetailPage({
 
   const ddayText = formatDDay(grant.end_date);
   const ddayColor = getDDayColor(grant.end_date);
-  const amount = formatAmountRange(grant.amount_min, grant.amount_max);
 
   const SOURCE_LABELS: Record<string, string> = {
     bizinfo: "기업마당",
@@ -145,12 +142,6 @@ export default function GrantDetailPage({
               {grant.title}
             </h1>
 
-            {/* Amount */}
-            {amount && (
-              <p className="mt-4 text-2xl font-bold text-blue-600">
-                {amount}
-              </p>
-            )}
           </div>
 
           {/* Info Grid */}
@@ -179,15 +170,6 @@ export default function GrantDetailPage({
                 <p className="text-xs text-gray-500">마감일</p>
                 <p className="font-medium text-gray-900">
                   {grant.end_date || "상시접수"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-white px-6 py-4 sm:px-8">
-              <Banknote className="h-5 w-5 shrink-0 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">지원금액</p>
-                <p className="font-medium text-gray-900">
-                  {amount || "금액 미정"}
                 </p>
               </div>
             </div>

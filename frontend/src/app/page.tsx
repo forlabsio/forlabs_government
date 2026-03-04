@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import { fetchGrants, type Grant } from "@/lib/api";
-import { formatDDay, getDDay, formatAmountRange } from "@/lib/format";
+import { formatDDay, getDDay } from "@/lib/format";
 import {
   ArrowRight,
   Clock,
@@ -11,17 +11,15 @@ import {
   TrendingUp,
   Flame,
   Building2,
-  Banknote,
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 
-type Tab = "urgent" | "recent" | "amount";
+type Tab = "urgent" | "recent";
 
 const TABS: { key: Tab; label: string; icon: typeof Clock }[] = [
   { key: "urgent", label: "마감임박", icon: Flame },
   { key: "recent", label: "최근등록", icon: TrendingUp },
-  { key: "amount", label: "높은지원금", icon: Banknote },
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -44,7 +42,6 @@ export default function HomePage() {
   const [grants, setGrants] = useState<Record<Tab, Grant[]>>({
     urgent: [],
     recent: [],
-    amount: [],
   });
   const [tab, setTab] = useState<Tab>("urgent");
   const [loading, setLoading] = useState(true);
@@ -53,15 +50,13 @@ export default function HomePage() {
   useEffect(() => {
     async function load() {
       try {
-        const [urgentRes, recentRes, amountRes] = await Promise.all([
+        const [urgentRes, recentRes] = await Promise.all([
           fetchGrants({ sort: "deadline", size: "10" }).catch(() => null),
           fetchGrants({ sort: "recent", size: "10" }).catch(() => null),
-          fetchGrants({ sort: "amount", size: "10" }).catch(() => null),
         ]);
         setGrants({
           urgent: urgentRes?.items || [],
           recent: recentRes?.items || [],
-          amount: amountRes?.items || [],
         });
         setTotalCount(urgentRes?.total || recentRes?.total || 0);
       } finally {
@@ -144,7 +139,7 @@ export default function HomePage() {
             ))}
           </div>
           <Link
-            href={`/grants?sort=${tab === "urgent" ? "deadline" : tab === "amount" ? "amount" : "recent"}`}
+            href={`/grants?sort=${tab === "urgent" ? "deadline" : "recent"}`}
             className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
           >
             전체보기
@@ -179,10 +174,6 @@ export default function HomePage() {
                 const ddayText = formatDDay(grant.end_date);
                 const isUrgent = dday !== null && dday >= -7 && dday <= 0;
                 const isClosed = dday !== null && dday > 0;
-                const amount = formatAmountRange(
-                  grant.amount_min,
-                  grant.amount_max
-                );
                 const src = grant.sources?.[0] || "default";
 
                 return (
@@ -217,11 +208,6 @@ export default function HomePage() {
                           {grant.organization && (
                             <span className="truncate">
                               {grant.organization}
-                            </span>
-                          )}
-                          {amount && amount !== "금액 미정" && (
-                            <span className="shrink-0 font-medium text-blue-600">
-                              {amount}
                             </span>
                           )}
                         </div>
@@ -261,22 +247,11 @@ export default function HomePage() {
                       </div>
 
                       {/* Organization */}
-                      <div className="col-span-2 min-w-0">
+                      <div className="col-span-4 min-w-0">
                         <p className="flex items-center gap-1 truncate text-xs text-gray-500">
                           <Building2 className="h-3 w-3 shrink-0" />
                           {grant.organization || "-"}
                         </p>
-                      </div>
-
-                      {/* Amount */}
-                      <div className="col-span-2 text-right">
-                        {amount && amount !== "금액 미정" ? (
-                          <span className="text-sm font-bold text-blue-600">
-                            {amount}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-300">-</span>
-                        )}
                       </div>
 
                       {/* Source */}

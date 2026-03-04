@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDDay, getDDayColor, formatAmountRange } from "@/lib/format";
+import { formatDDay, getDDayColor } from "@/lib/format";
 import type { Grant } from "@/lib/api";
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -26,7 +26,6 @@ interface GrantCardProps {
 export default function GrantCard({ grant }: GrantCardProps) {
   const ddayText = formatDDay(grant.end_date);
   const ddayColor = getDDayColor(grant.end_date);
-  const amount = formatAmountRange(grant.amount_min, grant.amount_max);
   const primarySource = grant.sources?.[0] || "default";
   const sourceColor = SOURCE_COLORS[primarySource] || SOURCE_COLORS.default;
   const sourceLabel = SOURCE_LABELS[primarySource] || primarySource;
@@ -65,11 +64,6 @@ export default function GrantCard({ grant }: GrantCardProps) {
 
         {/* Spacer to push bottom content down */}
         <div className="mt-auto" />
-
-        {/* Amount */}
-        {amount && amount !== "금액 미정" && (
-          <p className="mb-3 text-lg font-bold text-blue-600">{amount}</p>
-        )}
 
         {/* Bottom: Category + Status */}
         <div className="flex flex-wrap items-center gap-2">
