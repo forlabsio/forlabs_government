@@ -1,9 +1,38 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import admin, auth, bookmarks, grants, search
 
-app = FastAPI(title="GovGrants API", version="0.1.0")
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.tasks import run_all_collectors, send_daily_curation
+
+    scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
+
+    scheduler.add_job(run_all_collectors, CronTrigger(hour=10, minute=0), args=["10:00"], id="collect-10am")
+    scheduler.add_job(run_all_collectors, CronTrigger(hour=14, minute=0), args=["14:00"], id="collect-2pm")
+    scheduler.add_job(run_all_collectors, CronTrigger(hour=17, minute=0), args=["17:00"], id="collect-5pm")
+    scheduler.add_job(send_daily_curation, CronTrigger(hour=8, minute=0), id="curation-8am")
+
+    scheduler.start()
+    logger.info("APScheduler started with 4 jobs")
+
+    yield
+
+    scheduler.shutdown()
+    logger.info("APScheduler shut down")
+
+
+app = FastAPI(title="GovGrants API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

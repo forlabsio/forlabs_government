@@ -178,8 +178,11 @@ async def delete_banner(
 
 @router.post("/trigger-collect")
 async def trigger_collect(admin: User = Depends(get_admin_user)):
+    import asyncio
+
     from app.tasks import run_all_collectors
-    run_all_collectors.delay("manual")
+
+    asyncio.create_task(run_all_collectors("manual"))
     return {"message": "Collection triggered"}
 
 

@@ -1,12 +1,10 @@
 # backend/app/tasks.py
-import asyncio
 import logging
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.celery_app import celery_app
 from app.collectors.registry import ALL_COLLECTORS
 from app.config import settings
 from app.models import EmailLog, GrantProject, User
@@ -15,33 +13,26 @@ logger = logging.getLogger(__name__)
 
 
 def _make_session() -> async_sessionmaker[AsyncSession]:
-    """Create a fresh async engine+session for each task invocation.
-
-    This avoids 'Future attached to a different loop' errors that happen
-    when Celery prefork workers reuse a module-level engine across forks.
-    """
     engine = create_async_engine(settings.async_database_url, echo=False)
     return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def _run_collectors(schedule_time: str):
+async def run_all_collectors(schedule_time: str):
     session_factory = _make_session()
     async with session_factory() as db:
         for collector in ALL_COLLECTORS:
             logger.info(f"Running {collector.source_name} at {schedule_time}")
-            log = await collector.run(db, schedule_time)
-            logger.info(
-                f"{collector.source_name}: {log.status} "
-                f"(new={log.new_count}, dup={log.duplicate_count})"
-            )
+            try:
+                log = await collector.run(db, schedule_time)
+                logger.info(
+                    f"{collector.source_name}: {log.status} "
+                    f"(new={log.new_count}, dup={log.duplicate_count})"
+                )
+            except Exception:
+                logger.exception(f"Failed to run {collector.source_name}")
 
 
-@celery_app.task
-def run_all_collectors(schedule_time: str):
-    asyncio.run(_run_collectors(schedule_time))
-
-
-async def _send_daily_curation():
+async def send_daily_curation():
     from app.email_service import send_curation_email
 
     session_factory = _make_session()
@@ -157,8 +148,3 @@ def _match_grants_for_user(user: User, grants: list[GrantProject]) -> list[Grant
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return [g for _, g in scored]
-
-
-@celery_app.task
-def send_daily_curation():
-    asyncio.run(_send_daily_curation())

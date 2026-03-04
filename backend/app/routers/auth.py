@@ -1,14 +1,13 @@
 # backend/app/routers/auth.py
 import random
 import string
+import time
 
 import bcrypt
-import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.email_service import send_verification_email
@@ -27,11 +26,29 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# Redis client for verification codes
-redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-
 VERIFICATION_CODE_TTL = 600  # 10 minutes
-VERIFICATION_PREFIX = "email_verify:"
+
+# In-memory verification code store: {email: (code, expires_at)}
+_verification_codes: dict[str, tuple[str, float]] = {}
+
+
+def _set_code(email: str, code: str):
+    _verification_codes[email] = (code, time.time() + VERIFICATION_CODE_TTL)
+
+
+def _get_code(email: str) -> str | None:
+    entry = _verification_codes.get(email)
+    if entry is None:
+        return None
+    code, expires_at = entry
+    if time.time() > expires_at:
+        _verification_codes.pop(email, None)
+        return None
+    return code
+
+
+def _delete_code(email: str):
+    _verification_codes.pop(email, None)
 
 
 def _hash_password(password: str) -> str:
@@ -59,8 +76,7 @@ async def send_verification(
         )
 
     code = _generate_code()
-    redis_key = f"{VERIFICATION_PREFIX}{body.email}"
-    await redis_client.setex(redis_key, VERIFICATION_CODE_TTL, code)
+    _set_code(body.email, code)
 
     send_verification_email(body.email, code)
 
@@ -70,8 +86,7 @@ async def send_verification(
 @router.post("/verify-code", response_model=VerifyCodeResponse)
 async def verify_code(body: VerifyCodeRequest):
     """Verify the 6-digit code sent to the email."""
-    redis_key = f"{VERIFICATION_PREFIX}{body.email}"
-    stored_code = await redis_client.get(redis_key)
+    stored_code = _get_code(body.email)
 
     if not stored_code or stored_code != body.code:
         raise HTTPException(
@@ -86,8 +101,7 @@ async def verify_code(body: VerifyCodeRequest):
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     """Create a new user account after email verification."""
     # Re-verify the code
-    redis_key = f"{VERIFICATION_PREFIX}{body.email}"
-    stored_code = await redis_client.get(redis_key)
+    stored_code = _get_code(body.email)
 
     if not stored_code or stored_code != body.verification_code:
         raise HTTPException(
@@ -127,7 +141,7 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     # Delete the used verification code
-    await redis_client.delete(redis_key)
+    _delete_code(body.email)
 
     return AuthResponse(
         token=str(user.id),

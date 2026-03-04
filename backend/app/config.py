@@ -3,7 +3,6 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/govgrants"
-    redis_url: str = "redis://localhost:6379/0"
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_service_key: str = ""
