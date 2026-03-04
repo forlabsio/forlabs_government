@@ -19,8 +19,8 @@ def _make_session() -> async_sessionmaker[AsyncSession]:
 
 async def run_all_collectors(schedule_time: str):
     session_factory = _make_session()
-    async with session_factory() as db:
-        for collector in ALL_COLLECTORS:
+    for collector in ALL_COLLECTORS:
+        async with session_factory() as db:
             logger.info(f"Running {collector.source_name} at {schedule_time}")
             try:
                 log = await collector.run(db, schedule_time)

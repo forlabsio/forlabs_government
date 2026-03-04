@@ -58,19 +58,22 @@ class BaseCollector(ABC):
                 )
                 grant = existing.scalar_one_or_none()
 
-                if grant:
-                    # Check if source already recorded
-                    src_exists = await db.execute(
-                        select(GrantSource).where(
-                            GrantSource.source == self.source_name,
-                            GrantSource.source_id == source_id,
-                        )
+                # Check if this source record already exists
+                src_exists = await db.execute(
+                    select(GrantSource).where(
+                        GrantSource.source == self.source_name,
+                        GrantSource.source_id == source_id,
                     )
-                    if not src_exists.scalar_one_or_none():
-                        db.add(GrantSource(
-                            grant_id=grant.id, source=self.source_name,
-                            source_id=source_id, raw_data=raw,
-                        ))
+                )
+                if src_exists.scalar_one_or_none():
+                    log.duplicate_count += 1
+                    continue
+
+                if grant:
+                    db.add(GrantSource(
+                        grant_id=grant.id, source=self.source_name,
+                        source_id=source_id, raw_data=raw,
+                    ))
                     log.duplicate_count += 1
                 else:
                     grant = GrantProject(dedup_hash=dedup_hash, **normalized)
@@ -80,9 +83,6 @@ class BaseCollector(ABC):
                         grant_id=grant.id, source=self.source_name,
                         source_id=source_id, raw_data=raw,
                     ))
-
-                    # Embedding generation deferred (pgvector not available on Railway PG)
-
                     log.new_count += 1
 
             log.status = "success"
