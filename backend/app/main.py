@@ -14,17 +14,16 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.tasks import run_all_collectors, send_daily_curation
+    from app.tasks import run_all_collectors
 
     scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
 
     scheduler.add_job(run_all_collectors, CronTrigger(hour=10, minute=0), args=["10:00"], id="collect-10am")
     scheduler.add_job(run_all_collectors, CronTrigger(hour=14, minute=0), args=["14:00"], id="collect-2pm")
     scheduler.add_job(run_all_collectors, CronTrigger(hour=17, minute=0), args=["17:00"], id="collect-5pm")
-    scheduler.add_job(send_daily_curation, CronTrigger(hour=8, minute=0), id="curation-8am")
 
     scheduler.start()
-    logger.info("APScheduler started with 4 jobs")
+    logger.info("APScheduler started with 3 jobs")
 
     yield
 
