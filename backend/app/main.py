@@ -39,6 +39,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:3001",
         "https://frontend-production-3aea.up.railway.app",
+        "https://danbi.forlabs.io",
     ],
     allow_credentials=True,
     allow_methods=["*"],
