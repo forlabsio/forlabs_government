@@ -154,23 +154,19 @@ export default function GraphPage() {
 
   function handleNodeClick(nodeData: GraphNode["data"] | null) {
     setSelected(nodeData);
-    if (!nodeData) return;
-    if (mode === "overview" && (nodeData.type === "Agency" || nodeData.type === "TechArea")) {
-      drillDown(nodeData.id);
-    }
   }
 
   const hubColor =
     hub?.type === "TechArea" ? GRAPH_COLORS.TechArea : GRAPH_COLORS.Agency;
 
   return (
-    <div className="relative flex flex-col" style={{ background: "#070b14", height: "calc(100vh - 64px)" }}>
+    <div className="relative flex flex-col" style={{ background: "#070b14", height: "calc(100vh - 40px)" }}>
 
       {/* ── Top bar ── */}
       <div
         className="relative z-10 flex flex-shrink-0 items-center justify-between px-5 py-3"
         style={{
-          borderBottom: "1px solid rgba(0,212,255,0.10)",
+          borderBottom: `1px solid ${FOUNDRY.glow}`,
           background: "rgba(7,11,20,0.97)",
         }}
       >
@@ -180,7 +176,7 @@ export default function GraphPage() {
               <button
                 onClick={backToOverview}
                 className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all hover:bg-white/10"
-                style={{ color: "#00d4ff", border: "1px solid rgba(0,212,255,0.25)" }}
+                style={{ color: FOUNDRY.primary, border: `1px solid ${FOUNDRY.glow}` }}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
                 전체
@@ -197,7 +193,7 @@ export default function GraphPage() {
                 <span className="truncate text-sm font-semibold text-white">{hub?.label}</span>
                 <span
                   className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  style={{ background: "rgba(0,212,255,0.15)", color: "#00d4ff" }}
+                  style={{ background: FOUNDRY.glow, color: FOUNDRY.primary }}
                 >
                   {hub?.grant_count}개 과제
                 </span>
@@ -257,7 +253,7 @@ export default function GraphPage() {
               <div className="relative">
                 <div
                   className="h-20 w-20 rounded-full"
-                  style={{ border: "1px solid rgba(0,212,255,0.18)" }}
+                  style={{ border: `1px solid ${FOUNDRY.glow}` }}
                 />
                 <Loader2 className="absolute inset-0 m-auto h-9 w-9 animate-spin text-cyan-400" />
               </div>
@@ -353,7 +349,7 @@ export default function GraphPage() {
                     <div className="flex items-center gap-2.5">
                       <div
                         className="h-4 w-4 shrink-0 rounded-full"
-                        style={{ background: hubColor, border: "2px solid #00d4ff" }}
+                        style={{ background: hubColor, border: `2px solid ${FOUNDRY.primary}` }}
                       />
                       <span className="text-xs text-gray-300">허브 노드</span>
                     </div>
@@ -445,7 +441,7 @@ function InspectorPanel({
         overflow: "hidden",
         transition: "width 200ms ease",
         background: "rgba(10,15,30,0.97)",
-        borderLeft: `1px solid rgba(0,212,255,0.10)`,
+        borderLeft: `1px solid ${FOUNDRY.glow}`,
         flexShrink: 0,
         display: "flex",
         flexDirection: "column",
@@ -574,10 +570,10 @@ function InspectorPanel({
                   onClick={() => onDrillDown(node.id)}
                   style={{
                     padding: "8px 12px",
-                    background: "linear-gradient(135deg, rgba(0,212,255,0.22), rgba(0,212,255,0.10))",
-                    border: "1px solid rgba(0,212,255,0.35)",
+                    background: `linear-gradient(135deg, ${FOUNDRY.glow}, ${FOUNDRY.glow})`,
+                    border: `1px solid ${FOUNDRY.primary}`,
                     borderRadius: 6,
-                    color: "#00d4ff",
+                    color: FOUNDRY.primary,
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -589,12 +585,12 @@ function InspectorPanel({
                   }}
                 >
                   <TrendingUp style={{ width: 14, height: 14 }} />
-                  과제 네트워크 분석
+                  드릴다운 →
                 </button>
               )}
             {node.type === "Grant" && (
               <a
-                href={`/grants`}
+                href={'/grants/' + node.id}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -603,10 +599,10 @@ function InspectorPanel({
                   justifyContent: "center",
                   gap: 6,
                   padding: "8px 12px",
-                  background: "rgba(0,212,255,0.10)",
-                  border: "1px solid rgba(0,212,255,0.28)",
+                  background: FOUNDRY.glow,
+                  border: `1px solid ${FOUNDRY.primary}`,
                   borderRadius: 6,
-                  color: "#00d4ff",
+                  color: FOUNDRY.primary,
                   fontSize: 12,
                   fontWeight: 600,
                   textDecoration: "none",
