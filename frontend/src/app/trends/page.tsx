@@ -31,16 +31,21 @@ const tooltipStyle = {
   color: FOUNDRY.text,
 };
 
+// Primary color RGB components for heatmap opacity interpolation
+const PRIMARY_RGB = "45,114,210"; // matches FOUNDRY.primary #2D72D2
+
 export default function TrendsPage() {
   const [data, setData] = useState<TrendData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [months, setMonths] = useState(6);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     fetchTrends(months)
       .then(setData)
-      .catch(console.error)
+      .catch((err) => { console.error(err); setError("데이터를 불러올 수 없습니다."); })
       .finally(() => setLoading(false));
   }, [months]);
 
@@ -335,7 +340,7 @@ export default function TrendsPage() {
                       {/* Cells */}
                       {data.agencies.slice(0, 8).map((agency, colIdx) => {
                         const intensity = (rowIdx * 7 + colIdx * 3) % 100;
-                        const bg = `rgba(45,114,210,${(intensity / 100).toFixed(2)})`;
+                        const bg = `rgba(${PRIMARY_RGB},${(intensity / 100).toFixed(2)})`;
                         return (
                           <div
                             key={agency.name}
@@ -374,7 +379,9 @@ export default function TrendsPage() {
               justifyContent: "center",
             }}
           >
-            <p style={{ fontSize: 14, color: FOUNDRY.muted }}>데이터를 불러올 수 없습니다</p>
+            <p style={{ fontSize: 14, color: error ? FOUNDRY.danger : FOUNDRY.muted }}>
+              {error ?? "데이터가 없습니다"}
+            </p>
           </div>
         )}
       </div>
