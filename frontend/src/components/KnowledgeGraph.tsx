@@ -219,7 +219,7 @@ export default function KnowledgeGraph({ data, mode, onNodeClick, cyRef: externa
     <CytoscapeComponent
       elements={elements}
       stylesheet={CY_STYLESHEET}
-      layout={layout}
+      layout={layout as cytoscape.LayoutOptions & Record<string, unknown>}
       style={{ width: "100%", height: "100%" }}
       cy={handleCyInit}
     />
