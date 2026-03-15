@@ -1,26 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import { fetchGrants, type Grant } from "@/lib/api";
 import { formatDDay, getDDay } from "@/lib/format";
 import {
   ArrowRight,
+  GitBranch,
+  TrendingUp,
+  Network,
+  Zap,
+  Flame,
   Clock,
   Sparkles,
-  TrendingUp,
-  Flame,
-  Building2,
-  ChevronRight,
 } from "lucide-react";
-import Link from "next/link";
-
-type Tab = "urgent" | "recent";
-
-const TABS: { key: Tab; label: string; icon: typeof Clock }[] = [
-  { key: "urgent", label: "마감임박", icon: Flame },
-  { key: "recent", label: "최근등록", icon: TrendingUp },
-];
 
 const SOURCE_LABELS: Record<string, string> = {
   bizinfo: "기업마당",
@@ -30,13 +24,14 @@ const SOURCE_LABELS: Record<string, string> = {
   smes: "중소벤처24",
 };
 
-const SOURCE_COLORS: Record<string, string> = {
-  bizinfo: "text-blue-700 bg-blue-50",
-  kocca: "text-orange-700 bg-orange-50",
-  kstartup: "text-indigo-700 bg-indigo-50",
-  subsidy24: "text-pink-700 bg-pink-50",
-  smes: "text-purple-700 bg-purple-50",
-};
+const INTEL_FEATURES = [
+  { href: "/graph", icon: GitBranch, label: "Knowledge Graph", color: "#00d4ff" },
+  { href: "/trends", icon: TrendingUp, label: "트렌드 분석", color: "#f97316" },
+  { href: "/network", icon: Network, label: "기업 네트워크", color: "#10b981" },
+  { href: "/matching", icon: Zap, label: "자동 매칭", color: "#8b5cf6" },
+] as const;
+
+type Tab = "urgent" | "recent";
 
 export default function HomePage() {
   const [grants, setGrants] = useState<Record<Tab, Grant[]>>({
@@ -66,110 +61,130 @@ export default function HomePage() {
     load();
   }, []);
 
-  const currentGrants = grants[tab];
-
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section — compact */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white pb-10 pt-14 sm:pb-14 sm:pt-20">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mb-4 flex justify-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 sm:text-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI 기반 맞춤형 지원사업 검색
-            </span>
+    <div className="min-h-screen" style={{ background: "#0a0e1a" }}>
+      {/* Hero */}
+      <section className="relative overflow-hidden px-4 pb-12 pt-16 sm:px-6">
+        {/* Background grid */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(0,212,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.1) 1px, transparent 1px)",
+            backgroundSize: "60px 60px",
+          }}
+        />
+        <div className="relative mx-auto max-w-4xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400">
+            <Sparkles className="h-3.5 w-3.5" />
+            정부 R&D Knowledge Graph 플랫폼
           </div>
-
-          <h1 className="mx-auto max-w-3xl text-center text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
-            우리 기업에 딱 맞는{" "}
-            <span className="text-blue-600">정부 지원사업</span>
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">
+            데이터 인텔리전스로
+            <br />
+            <span style={{ color: "#00d4ff" }}>최적의 정부 지원사업</span>을 찾으세요
           </h1>
-
-          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-gray-500 sm:text-base">
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-gray-400 sm:text-base">
             {totalCount > 0
-              ? `${totalCount.toLocaleString()}개 지원사업을 한곳에서 검색하세요`
-              : "흩어진 정부 지원사업 정보를 한곳에 모았습니다"}
+              ? `${totalCount.toLocaleString()}개 과제를 Knowledge Graph로 분석`
+              : "과제·기관·기술분야의 관계를 시각화하고 최적의 지원사업을 발굴합니다"}
           </p>
-
-          <div className="mx-auto mt-6 max-w-2xl sm:mt-8">
+          <div className="mx-auto mt-8 max-w-2xl">
             <SearchBar size="large" />
           </div>
+        </div>
+      </section>
 
-          {/* Quick category links */}
-          <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
-            {[
-              { label: "자금지원", href: "/grants?category=자금" },
-              { label: "R&D", href: "/grants?category=R%26D" },
-              { label: "창업", href: "/grants?category=창업" },
-              { label: "인력", href: "/grants?category=인력" },
-              { label: "수출", href: "/grants?category=수출" },
-            ].map((item) => (
+      {/* Intelligence feature strip */}
+      <section className="px-4 pb-10 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {INTEL_FEATURES.map(({ href, icon: Icon, label, color }) => (
               <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600 sm:text-sm"
+                key={href}
+                href={href}
+                className="group flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all"
+                style={{
+                  background: "#0f1628",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
               >
-                {item.label}
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{ background: `${color}15` }}
+                >
+                  <Icon className="h-4 w-4" style={{ color }} />
+                </div>
+                <span className="text-sm font-medium text-gray-300 group-hover:text-white">
+                  {label}
+                </span>
+                <ArrowRight className="ml-auto h-3.5 w-3.5 text-gray-700 group-hover:text-gray-400" />
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Main List Section */}
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-        {/* Tabs + View All */}
+      {/* Grant list */}
+      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
-            {TABS.map(({ key, label, icon: Icon }) => (
+          <div
+            className="flex gap-1 rounded-xl p-1"
+            style={{ background: "#0f1628" }}
+          >
+            {(
+              [
+                ["urgent", "마감임박", Flame],
+                ["recent", "최근등록", Clock],
+              ] as const
+            ).map(([key, label, Icon]) => (
               <button
                 key={key}
-                type="button"
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   tab === key
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-white/10 text-white"
+                    : "text-gray-500 hover:text-gray-300"
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{label.slice(0, 2)}</span>
+                <Icon className="h-3.5 w-3.5" /> {label}
               </button>
             ))}
           </div>
           <Link
-            href={`/grants?sort=${tab === "urgent" ? "deadline" : "recent"}`}
-            className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+            href="/grants"
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300"
           >
-            전체보기
+            전체 {totalCount > 0 && `${totalCount.toLocaleString()}개`}{" "}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
-        {/* Table-style list */}
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          {/* Table header */}
-          <div className="hidden border-b border-gray-100 bg-gray-50/50 px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-400 sm:grid sm:grid-cols-12 sm:gap-4">
-            <div className="col-span-1 text-center">D-Day</div>
-            <div className="col-span-5">사업명</div>
-            <div className="col-span-2">기관</div>
-            <div className="col-span-2 text-right">지원금</div>
-            <div className="col-span-1 text-center">출처</div>
-            <div className="col-span-1 text-center">상태</div>
-          </div>
-
+        <div
+          className="overflow-hidden rounded-xl"
+          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+        >
           {loading ? (
-            <div className="divide-y divide-gray-50">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-16 animate-pulse bg-white px-4 py-3">
-                  <div className="h-4 w-3/4 rounded bg-gray-100" />
+            <div
+              className="divide-y"
+              style={{ borderColor: "rgba(255,255,255,0.04)" }}
+            >
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 animate-pulse px-4 py-3"
+                  style={{ background: "#0f1628" }}
+                >
+                  <div className="h-4 w-3/4 rounded bg-white/5" />
                 </div>
               ))}
             </div>
-          ) : currentGrants.length > 0 ? (
-            <div className="divide-y divide-gray-50">
-              {currentGrants.map((grant) => {
+          ) : (
+            <div
+              className="divide-y"
+              style={{ borderColor: "rgba(255,255,255,0.04)" }}
+            >
+              {grants[tab].map((grant) => {
                 const dday = getDDay(grant.end_date);
                 const ddayText = formatDDay(grant.end_date);
                 const isUrgent = dday !== null && dday >= -7 && dday <= 0;
@@ -180,170 +195,84 @@ export default function HomePage() {
                   <Link
                     key={grant.id}
                     href={`/grants/${grant.id}`}
-                    className={`group block transition-colors hover:bg-blue-50/30 ${
-                      isClosed ? "opacity-50" : ""
+                    className={`group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/5 ${
+                      isClosed ? "opacity-40" : ""
                     }`}
+                    style={{ background: "#0f1628" }}
                   >
-                    {/* Mobile layout */}
-                    <div className="flex items-center gap-3 px-4 py-3.5 sm:hidden">
-                      {/* D-Day badge */}
-                      <div
-                        className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-center text-[10px] font-bold leading-tight ${
-                          isClosed
-                            ? "bg-gray-100 text-gray-400"
-                            : isUrgent
-                            ? "bg-red-50 text-red-600"
-                            : dday !== null
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-gray-50 text-gray-500"
-                        }`}
-                      >
-                        {ddayText}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-blue-600">
-                          {grant.title}
-                        </p>
-                        <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-500">
-                          {grant.organization && (
-                            <span className="truncate">
-                              {grant.organization}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
+                    <div
+                      className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-[10px] font-bold leading-tight"
+                      style={{
+                        background: isClosed
+                          ? "rgba(255,255,255,0.05)"
+                          : isUrgent
+                          ? "rgba(239,68,68,0.1)"
+                          : "rgba(59,130,246,0.1)",
+                        color: isClosed
+                          ? "#4a6080"
+                          : isUrgent
+                          ? "#ef4444"
+                          : "#3b82f6",
+                      }}
+                    >
+                      {ddayText}
                     </div>
-
-                    {/* Desktop layout */}
-                    <div className="hidden items-center gap-4 px-4 py-3 sm:grid sm:grid-cols-12">
-                      {/* D-Day */}
-                      <div className="col-span-1 text-center">
-                        <span
-                          className={`inline-block rounded-md px-2 py-1 text-xs font-bold ${
-                            isClosed
-                              ? "bg-gray-100 text-gray-400"
-                              : isUrgent
-                              ? "bg-red-50 text-red-600"
-                              : dday !== null
-                              ? "bg-blue-50 text-blue-600"
-                              : "bg-gray-50 text-gray-500"
-                          }`}
-                        >
-                          {ddayText}
-                        </span>
-                      </div>
-
-                      {/* Title */}
-                      <div className="col-span-5 min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-blue-600">
-                          {grant.title}
-                        </p>
-                        {grant.category && (
-                          <span className="mt-0.5 inline-block text-xs text-gray-400">
-                            {grant.category}
-                          </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-200 group-hover:text-white">
+                        {grant.title}
+                      </p>
+                      <div className="mt-0.5 flex items-center gap-3 text-xs text-gray-600">
+                        {grant.organization && (
+                          <span className="truncate">{grant.organization}</span>
                         )}
+                        {grant.category && <span>{grant.category}</span>}
                       </div>
-
-                      {/* Organization */}
-                      <div className="col-span-4 min-w-0">
-                        <p className="flex items-center gap-1 truncate text-xs text-gray-500">
-                          <Building2 className="h-3 w-3 shrink-0" />
-                          {grant.organization || "-"}
-                        </p>
-                      </div>
-
-                      {/* Source */}
-                      <div className="col-span-1 text-center">
+                    </div>
+                    <div className="hidden shrink-0 sm:flex items-center gap-2">
+                      <span
+                        className="rounded px-1.5 py-0.5 text-[10px] font-medium text-gray-500"
+                        style={{ background: "rgba(255,255,255,0.05)" }}
+                      >
+                        {SOURCE_LABELS[src] || src}
+                      </span>
+                      {grant.status === "접수중" && (
                         <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                            SOURCE_COLORS[src] || "bg-gray-50 text-gray-500"
-                          }`}
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium text-emerald-400"
+                          style={{ background: "rgba(16,185,129,0.1)" }}
                         >
-                          {SOURCE_LABELS[src] || src}
+                          접수중
                         </span>
-                      </div>
-
-                      {/* Status */}
-                      <div className="col-span-1 text-center">
-                        {grant.status && (
-                          <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                              grant.status === "접수중"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {grant.status}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </Link>
                 );
               })}
             </div>
-          ) : (
-            <div className="py-16 text-center">
-              <p className="text-sm text-gray-400">
-                등록된 지원사업이 없습니다
-              </p>
-            </div>
           )}
-        </div>
-
-        {/* View all button */}
-        <div className="mt-4 text-center">
-          <Link
-            href="/grants"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            전체 {totalCount > 0 && `${totalCount.toLocaleString()}개 `}
-            지원사업 보기
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
       </section>
 
-      {/* Data sources */}
-      <section className="border-t border-gray-100 bg-gray-50/50 py-10">
+      {/* Data sources footer strip */}
+      <section
+        className="py-8"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="mb-4 text-center text-xs font-medium uppercase tracking-wider text-gray-400">
+          <p className="mb-4 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
             데이터 소스
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-            {[
-              { name: "기업마당", active: true },
-              { name: "K-Startup", active: true },
-              { name: "KOCCA", active: true },
-              { name: "보조금24", active: true },
-              { name: "중소벤처24", active: true },
-            ].map((source) => (
-              <span
-                key={source.name}
-                className={`text-sm font-medium ${
-                  source.active ? "text-gray-600" : "text-gray-300"
-                }`}
-              >
-                {source.name}
-                {source.active && (
-                  <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-green-400" />
-                )}
-              </span>
-            ))}
+            {["기업마당", "K-Startup", "KOCCA", "보조금24", "중소벤처24"].map(
+              (source) => (
+                <span key={source} className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
+                  {source}
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+              )
+            )}
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white py-6">
-        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <p className="text-xs text-gray-400">
-            © 2026 ForLabs. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
