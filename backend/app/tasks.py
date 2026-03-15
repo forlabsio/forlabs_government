@@ -31,6 +31,53 @@ async def run_all_collectors(schedule_time: str):
             except Exception:
                 logger.exception(f"Failed to run {collector.source_name}")
 
+    # 수집 완료 후 임베딩 없는 신규 과제만 증분 임베딩
+    await embed_new_grants(session_factory)
+
+
+async def embed_new_grants(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    """접수중/공고중 과제 중 임베딩이 없는 것만 증분 처리."""
+    from sqlalchemy import text
+    from app.embedding import generate_grant_embedding
+
+    async with session_factory() as db:
+        result = await db.execute(
+            select(GrantProject)
+            .where(
+                GrantProject.status.in_(["접수중", "공고중"]),
+                GrantProject.content_embedding.is_(None),
+            )
+            .limit(500)  # 한 번에 최대 500건 (안전장치)
+        )
+        grants = result.scalars().all()
+
+    if not grants:
+        logger.info("embed_new_grants: 신규 임베딩 대상 없음")
+        return
+
+    logger.info(f"embed_new_grants: {len(grants)}건 임베딩 시작")
+    success = 0
+    for g in grants:
+        try:
+            emb = await generate_grant_embedding(
+                title=g.title,
+                summary=g.summary,
+                category=g.category,
+                organization=g.organization,
+            )
+            if emb:
+                async with session_factory() as db:
+                    await db.execute(
+                        text("UPDATE grant_projects SET content_embedding = :emb WHERE id = :id"),
+                        {"emb": "[" + ",".join(f"{x:.7f}" for x in emb) + "]", "id": str(g.id)},
+                    )
+                    await db.commit()
+                success += 1
+        except Exception:
+            logger.exception(f"embed_new_grants: {g.id} 실패")
+
+    logger.info(f"embed_new_grants: {success}/{len(grants)}건 완료")
+
 
 async def send_daily_curation():
     from app.email_service import send_curation_email

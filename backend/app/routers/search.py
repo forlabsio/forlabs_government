@@ -149,6 +149,7 @@ async def _vector_search(
     except Exception as e:
         # pgvector not available or column missing — degrade gracefully
         logger.warning("Vector search unavailable: %s", e)
+        await db.rollback()  # must rollback aborted txn before any further queries
         return []
 
 

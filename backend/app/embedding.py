@@ -2,30 +2,40 @@ from __future__ import annotations
 # backend/app/embedding.py
 import logging
 
-from openai import AsyncOpenAI
+import voyageai
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-client = AsyncOpenAI(api_key=settings.openai_api_key)
+EMBEDDING_MODEL = "voyage-multilingual-2"
+EMBEDDING_DIM = 1024
 
-EMBEDDING_MODEL = "text-embedding-3-small"
+_client: voyageai.AsyncClient | None = None
+
+
+def _get_client() -> voyageai.AsyncClient:
+    global _client
+    if _client is None:
+        _client = voyageai.AsyncClient(api_key=settings.voyage_api_key)
+    return _client
 
 
 async def generate_embedding(text: str) -> list[float] | None:
-    """Generate embedding vector for given text using OpenAI."""
-    if not settings.openai_api_key:
-        logger.warning("OpenAI API key not set, skipping embedding")
+    """Generate embedding vector for given text using Voyage AI."""
+    if not settings.voyage_api_key:
+        logger.warning("Voyage API key not set, skipping embedding")
         return None
     try:
-        response = await client.embeddings.create(
+        client = _get_client()
+        result = await client.embed(
+            [text[:8000]],
             model=EMBEDDING_MODEL,
-            input=text[:8000],  # Truncate to avoid token limit
+            input_type="query",
         )
-        return response.data[0].embedding
+        return result.embeddings[0]
     except Exception as e:
-        logger.error(f"Embedding generation failed: {e}")
+        logger.error("Embedding generation failed: %s", e)
         return None
 
 
@@ -44,7 +54,19 @@ async def generate_grant_embedding(
     if organization:
         parts.append(f"기관: {organization}")
     text = " ".join(parts)
-    return await generate_embedding(text)
+    if not settings.voyage_api_key:
+        return None
+    try:
+        client = _get_client()
+        result = await client.embed(
+            [text[:8000]],
+            model=EMBEDDING_MODEL,
+            input_type="document",
+        )
+        return result.embeddings[0]
+    except Exception as e:
+        logger.error("Grant embedding generation failed: %s", e)
+        return None
 
 
 async def generate_profile_embedding(
@@ -65,5 +87,16 @@ async def generate_profile_embedding(
         parts.append(f"매출: {revenue_range}")
     if not parts:
         return None
-    text = " ".join(parts)
-    return await generate_embedding(text)
+    if not settings.voyage_api_key:
+        return None
+    try:
+        client = _get_client()
+        result = await client.embed(
+            [" ".join(parts)],
+            model=EMBEDDING_MODEL,
+            input_type="document",
+        )
+        return result.embeddings[0]
+    except Exception as e:
+        logger.error("Profile embedding generation failed: %s", e)
+        return None
