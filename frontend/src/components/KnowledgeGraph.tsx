@@ -6,7 +6,7 @@ import cytoscape from "cytoscape";
 import { GRAPH_COLORS } from "@/lib/theme";
 import type { GraphData, GraphNode } from "@/lib/api";
 
-const CY_STYLESHEET: cytoscape.Stylesheet[] = [
+const CY_STYLESHEET: (cytoscape.StylesheetStyle | cytoscape.StylesheetCSS)[] = [
   {
     selector: "node[type='Grant']",
     style: {
