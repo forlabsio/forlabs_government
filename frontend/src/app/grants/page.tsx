@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { fetchGrants, searchGrants, type Grant } from "@/lib/api";
-import { formatDDay, getDDay, formatAmount } from "@/lib/format";
+import { formatDDay, getDDay } from "@/lib/format";
 import { ChevronLeft, ChevronRight, ChevronDown, X, Search } from "lucide-react";
 import Link from "next/link";
 import { FOUNDRY } from "@/lib/theme";
