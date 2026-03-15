@@ -2,11 +2,12 @@
 import uuid
 from datetime import date, datetime
 
+# pgvector is optional — embedding columns only added if extension is available in Postgres
 try:
-    from pgvector.sqlalchemy import Vector
+    from pgvector.sqlalchemy import Vector as _Vector
     _PGVECTOR_AVAILABLE = True
 except ImportError:
-    Vector = None  # type: ignore[assignment]
+    _Vector = None  # type: ignore[assignment]
     _PGVECTOR_AVAILABLE = False
 from sqlalchemy import (
     BigInteger,
@@ -41,7 +42,6 @@ class User(Base):
     region: Mapped[str | None] = mapped_column(String)
     employee_count: Mapped[int | None] = mapped_column(Integer)
     revenue_range: Mapped[str | None] = mapped_column(String)
-    profile_embedding: Mapped[list[float] | None] = mapped_column(Vector(1536) if _PGVECTOR_AVAILABLE else JSON, nullable=True)
     email_opt_in: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -69,7 +69,6 @@ class GrantProject(Base):
     organization: Mapped[str | None] = mapped_column(String)
     detail_url: Mapped[str | None] = mapped_column(String)
     view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    content_embedding: Mapped[list[float] | None] = mapped_column(Vector(1536) if _PGVECTOR_AVAILABLE else JSON, nullable=True)
     dedup_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
