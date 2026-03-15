@@ -11,6 +11,21 @@ import {
 import Link from "next/link";
 import { Mail, KeyRound, Building2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
+const F = {
+  bg:      "#0B1117",
+  sidebar: "#161C22",
+  panel:   "#1C2B3C",
+  card:    "#1F2D3D",
+  border:  "rgba(255,255,255,0.08)",
+  primary: "#2D72D2",
+  glow:    "rgba(45,114,210,0.15)",
+  text:    "#F0F4F8",
+  muted:   "#7B919E",
+  success: "#23A26D",
+  warning: "#BF7326",
+  danger:  "#C23030",
+};
+
 const INDUSTRIES = [
   "IT/소프트웨어",
   "제조업",
@@ -55,6 +70,46 @@ const REVENUE_RANGES = [
   "100억 이상",
 ];
 
+// Shared input style factory
+function inputStyle(focused: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    background: F.card,
+    border: `1px solid ${focused ? F.primary : F.border}`,
+    borderRadius: 6,
+    padding: "10px 12px",
+    fontSize: 13,
+    color: F.text,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+}
+
+function selectStyle(focused: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    background: F.card,
+    border: `1px solid ${focused ? F.primary : F.border}`,
+    borderRadius: 6,
+    padding: "10px 12px",
+    fontSize: 13,
+    color: F.text,
+    outline: "none",
+    boxSizing: "border-box",
+    appearance: "none" as React.CSSProperties["appearance"],
+  };
+}
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 11,
+  color: F.muted,
+  fontWeight: 500,
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+  marginBottom: 6,
+};
+
 export default function SignupPage() {
   const router = useRouter();
   const { refreshUser } = useAuth();
@@ -64,10 +119,15 @@ export default function SignupPage() {
 
   // Step 1
   const [email, setEmail] = useState("");
+  const [emailFocused, setEmailFocused] = useState(false);
 
   // Step 2
   const [code, setCode] = useState("");
+  const [codeFocused, setCodeFocused] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  // Step 3 focus states
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Step 3
   const [password, setPassword] = useState("");
@@ -98,7 +158,7 @@ export default function SignupPage() {
     try {
       await sendVerificationCode(email.trim());
       setStep(2);
-      setCountdown(600); // 10 minutes
+      setCountdown(600);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "인증코드 발송에 실패했습니다.");
     } finally {
@@ -202,71 +262,131 @@ export default function SignupPage() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const errorBlock = error ? (
+    <div
+      style={{
+        marginTop: 12,
+        background: "rgba(194,48,48,0.1)",
+        border: `1px solid ${F.danger}`,
+        borderRadius: 6,
+        padding: "10px 12px",
+        fontSize: 12,
+        color: F.danger,
+      }}
+    >
+      {error}
+    </div>
+  ) : null;
+
   return (
-    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-gray-50 px-4 py-8">
-      <div className="w-full max-w-md">
+    <div
+      style={{
+        height: "calc(100vh - 40px)",
+        background: F.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 16px",
+        overflowY: "auto",
+      }}
+    >
+      <div style={{ width: 460 }}>
         {/* Progress bar */}
-        <div className="mb-8 flex justify-center gap-2">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 6,
+            marginBottom: 24,
+          }}
+        >
           {[1, 2, 3].map((s) => (
             <div
               key={s}
-              className={`h-1.5 w-16 rounded-full transition-colors ${
-                step >= s ? "bg-blue-600" : "bg-gray-200"
-              }`}
+              style={{
+                height: 3,
+                width: 60,
+                borderRadius: 2,
+                background: step >= s ? F.primary : F.border,
+                transition: "background 0.2s",
+              }}
             />
           ))}
         </div>
 
-        <div className="rounded-2xl bg-white p-8 shadow-sm">
+        <div
+          style={{
+            background: F.panel,
+            border: `1px solid ${F.border}`,
+            borderRadius: 12,
+            padding: 40,
+          }}
+        >
           {/* ─── Step 1: Email ─── */}
           {step === 1 && (
             <div>
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                  <Mail className="h-5 w-5 text-blue-600" />
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: F.glow,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Mail size={16} color={F.primary} />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">
+                  <h1 style={{ fontSize: 16, fontWeight: 700, color: F.text, margin: 0 }}>
                     회원가입
                   </h1>
-                  <p className="text-sm text-gray-500">
+                  <p style={{ fontSize: 12, color: F.muted, margin: 0, marginTop: 2 }}>
                     이메일 주소를 입력해주세요
                   </p>
                 </div>
               </div>
 
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                이메일
-              </label>
+              <label style={labelStyle}>이메일</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
                 placeholder="example@company.com"
-                className="mb-4 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                style={{ ...inputStyle(emailFocused), marginBottom: 16 }}
                 autoFocus
               />
 
-              {error && (
-                <p className="mb-4 text-sm text-red-500">{error}</p>
-              )}
+              {errorBlock}
 
               <button
                 type="button"
                 onClick={handleSendCode}
                 disabled={loading || !email.trim()}
-                className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
+                style={{
+                  marginTop: error ? 12 : 0,
+                  width: "100%",
+                  background: loading || !email.trim() ? "rgba(45,114,210,0.3)" : F.primary,
+                  color: F.text,
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "11px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: loading || !email.trim() ? "not-allowed" : "pointer",
+                }}
               >
                 {loading ? "발송 중..." : "인증코드 발송"}
               </button>
 
-              <p className="mt-6 text-center text-sm text-gray-500">
+              <p style={{ fontSize: 12, color: F.muted, textAlign: "center", marginTop: 20, marginBottom: 0 }}>
                 이미 계정이 있으신가요?{" "}
-                <Link
-                  href="/login"
-                  className="font-medium text-blue-600 hover:text-blue-700"
-                >
+                <Link href="/login" style={{ color: F.primary, textDecoration: "none" }}>
                   로그인
                 </Link>
               </p>
@@ -276,24 +396,31 @@ export default function SignupPage() {
           {/* ─── Step 2: Verify Code ─── */}
           {step === 2 && (
             <div>
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                  <KeyRound className="h-5 w-5 text-blue-600" />
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: F.glow,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <KeyRound size={16} color={F.primary} />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">
+                  <h1 style={{ fontSize: 16, fontWeight: 700, color: F.text, margin: 0 }}>
                     이메일 인증
                   </h1>
-                  <p className="text-sm text-gray-500">
-                    <span className="font-medium text-gray-700">{email}</span>
-                    으로 발송된 인증코드를 입력해주세요
+                  <p style={{ fontSize: 12, color: F.muted, margin: 0, marginTop: 2 }}>
+                    <span style={{ color: F.text }}>{email}</span>으로 발송된 인증코드를 입력해주세요
                   </p>
                 </div>
               </div>
 
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                인증코드 6자리
-              </label>
+              <label style={labelStyle}>인증코드 6자리</label>
               <input
                 type="text"
                 value={code}
@@ -301,14 +428,23 @@ export default function SignupPage() {
                   setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                 }
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
+                onFocus={() => setCodeFocused(true)}
+                onBlur={() => setCodeFocused(false)}
                 placeholder="000000"
                 maxLength={6}
-                className="mb-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                style={{
+                  ...inputStyle(codeFocused),
+                  textAlign: "center",
+                  fontSize: 24,
+                  fontWeight: 700,
+                  letterSpacing: "0.4em",
+                  marginBottom: 8,
+                }}
                 autoFocus
               />
 
-              <div className="mb-4 flex items-center justify-between text-sm">
-                <span className="text-gray-400">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontSize: 12, color: F.muted }}>
                   {countdown > 0
                     ? `남은 시간: ${formatCountdown(countdown)}`
                     : "인증코드가 만료되었습니다"}
@@ -317,21 +453,43 @@ export default function SignupPage() {
                   type="button"
                   onClick={handleResendCode}
                   disabled={loading}
-                  className="text-blue-600 hover:text-blue-700"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: F.primary,
+                    fontSize: 12,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    padding: 0,
+                  }}
                 >
                   재발송
                 </button>
               </div>
 
-              {error && (
-                <p className="mb-4 text-sm text-red-500">{error}</p>
-              )}
+              {errorBlock}
 
               <button
                 type="button"
                 onClick={handleVerifyCode}
                 disabled={loading || code.length !== 6 || countdown <= 0}
-                className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
+                style={{
+                  marginTop: 12,
+                  width: "100%",
+                  background:
+                    loading || code.length !== 6 || countdown <= 0
+                      ? "rgba(45,114,210,0.3)"
+                      : F.primary,
+                  color: F.text,
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "11px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor:
+                    loading || code.length !== 6 || countdown <= 0
+                      ? "not-allowed"
+                      : "pointer",
+                }}
               >
                 {loading ? "확인 중..." : "확인"}
               </button>
@@ -342,7 +500,16 @@ export default function SignupPage() {
                   setStep(1);
                   setError("");
                 }}
-                className="mt-3 w-full py-2 text-sm text-gray-500 hover:text-gray-700"
+                style={{
+                  marginTop: 10,
+                  width: "100%",
+                  background: "none",
+                  border: "none",
+                  color: F.muted,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  padding: "8px 0",
+                }}
               >
                 이메일 변경
               </button>
@@ -352,201 +519,260 @@ export default function SignupPage() {
           {/* ─── Step 3: Company Info + Password ─── */}
           {step === 3 && (
             <form onSubmit={handleSignup}>
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                  <Building2 className="h-5 w-5 text-blue-600" />
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: F.glow,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Building2 size={16} color={F.primary} />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">
+                  <h1 style={{ fontSize: 16, fontWeight: 700, color: F.text, margin: 0 }}>
                     기업 정보
                   </h1>
-                  <p className="text-sm text-gray-500">
+                  <p style={{ fontSize: 12, color: F.muted, margin: 0, marginTop: 2 }}>
                     맞춤 지원사업 추천을 위해 정보를 입력해주세요
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {/* Company Name */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    기업명
-                  </label>
+                  <label style={labelStyle}>기업명</label>
                   <input
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
+                    onFocus={() => setFocusedField("companyName")}
+                    onBlur={() => setFocusedField(null)}
                     placeholder="기업명을 입력해주세요"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    style={inputStyle(focusedField === "companyName")}
                   />
                 </div>
 
                 {/* Industry + Region */}
-                <div className="grid grid-cols-2 gap-3">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      업종
-                    </label>
+                    <label style={labelStyle}>업종</label>
                     <select
                       value={industry}
                       onChange={(e) => setIndustry(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      onFocus={() => setFocusedField("industry")}
+                      onBlur={() => setFocusedField(null)}
+                      style={selectStyle(focusedField === "industry")}
                     >
                       <option value="">선택</option>
                       {INDUSTRIES.map((i) => (
-                        <option key={i} value={i}>
-                          {i}
-                        </option>
+                        <option key={i} value={i}>{i}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      소재지
-                    </label>
+                    <label style={labelStyle}>소재지</label>
                     <select
                       value={region}
                       onChange={(e) => setRegion(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      onFocus={() => setFocusedField("region")}
+                      onBlur={() => setFocusedField(null)}
+                      style={selectStyle(focusedField === "region")}
                     >
                       <option value="">선택</option>
                       {REGIONS.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
+                        <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
                   </div>
                 </div>
 
                 {/* Company Age + Employee Count */}
-                <div className="grid grid-cols-2 gap-3">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      업력 (년)
-                    </label>
+                    <label style={labelStyle}>업력 (년)</label>
                     <input
                       type="number"
                       value={companyAge}
                       onChange={(e) => setCompanyAge(e.target.value)}
+                      onFocus={() => setFocusedField("companyAge")}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="예: 3"
                       min="0"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      style={inputStyle(focusedField === "companyAge")}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      직원수
-                    </label>
+                    <label style={labelStyle}>직원수</label>
                     <input
                       type="number"
                       value={employeeCount}
                       onChange={(e) => setEmployeeCount(e.target.value)}
+                      onFocus={() => setFocusedField("employeeCount")}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="예: 10"
                       min="0"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      style={inputStyle(focusedField === "employeeCount")}
                     />
                   </div>
                 </div>
 
                 {/* Revenue Range */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    매출 구간
-                  </label>
+                  <label style={labelStyle}>매출 구간</label>
                   <select
                     value={revenueRange}
                     onChange={(e) => setRevenueRange(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    onFocus={() => setFocusedField("revenueRange")}
+                    onBlur={() => setFocusedField(null)}
+                    style={selectStyle(focusedField === "revenueRange")}
                   >
                     <option value="">선택</option>
                     {REVENUE_RANGES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
+                      <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-gray-100 pt-4">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    비밀번호
-                  </label>
-                  <div className="relative">
+                <div style={{ borderTop: `1px solid ${F.border}`, paddingTop: 14 }}>
+                  <label style={labelStyle}>비밀번호</label>
+                  <div style={{ position: "relative" }}>
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="8자 이상"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      style={{
+                        ...inputStyle(focusedField === "password"),
+                        paddingRight: 40,
+                      }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        color: F.muted,
+                        display: "flex",
+                        alignItems: "center",
+                      }}
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff size={14} />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye size={14} />
                       )}
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    비밀번호 확인
-                  </label>
+                  <label style={labelStyle}>비밀번호 확인</label>
                   <input
                     type="password"
                     value={passwordConfirm}
                     onChange={(e) => setPasswordConfirm(e.target.value)}
+                    onFocus={() => setFocusedField("passwordConfirm")}
+                    onBlur={() => setFocusedField(null)}
                     placeholder="비밀번호를 다시 입력해주세요"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    style={inputStyle(focusedField === "passwordConfirm")}
                   />
                   {passwordConfirm && password !== passwordConfirm && (
-                    <p className="mt-1 text-xs text-red-500">
+                    <p style={{ marginTop: 4, fontSize: 11, color: F.danger }}>
                       비밀번호가 일치하지 않습니다
                     </p>
                   )}
                 </div>
 
-                {/* Email opt-in */}
-                <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                {/* Email opt-in toggle */}
+                <div
+                  style={{
+                    background: F.card,
+                    border: `1px solid ${F.border}`,
+                    borderRadius: 8,
+                    padding: "12px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <div>
-                    <p className="text-sm font-medium text-gray-700">
+                    <p style={{ fontSize: 13, fontWeight: 500, color: F.text, margin: 0 }}>
                       이메일 알림 수신
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p style={{ fontSize: 11, color: F.muted, margin: 0, marginTop: 2 }}>
                       맞춤 지원사업이 등록되면 이메일로 알려드립니다
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setEmailOptIn(!emailOptIn)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                      emailOptIn ? "bg-blue-600" : "bg-gray-300"
-                    }`}
+                    style={{
+                      position: "relative",
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      background: emailOptIn ? F.primary : "rgba(255,255,255,0.12)",
+                      border: "none",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      transition: "background 0.2s",
+                    }}
                   >
                     <span
-                      className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                        emailOptIn ? "translate-x-6" : "translate-x-1"
-                      }`}
+                      style={{
+                        position: "absolute",
+                        top: 4,
+                        left: emailOptIn ? 24 : 4,
+                        width: 16,
+                        height: 16,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        transition: "left 0.2s",
+                      }}
                     />
                   </button>
                 </div>
               </div>
 
-              {error && (
-                <p className="mt-4 text-sm text-red-500">{error}</p>
-              )}
+              {errorBlock}
 
               <button
                 type="submit"
                 disabled={loading || !password || !passwordConfirm}
-                className="mt-6 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
+                style={{
+                  marginTop: 20,
+                  width: "100%",
+                  background:
+                    loading || !password || !passwordConfirm
+                      ? "rgba(45,114,210,0.3)"
+                      : F.primary,
+                  color: F.text,
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "11px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor:
+                    loading || !password || !passwordConfirm
+                      ? "not-allowed"
+                      : "pointer",
+                }}
               >
                 {loading ? "가입 중..." : "가입하기"}
               </button>
@@ -555,14 +781,25 @@ export default function SignupPage() {
 
           {/* ─── Step 4: Success ─── */}
           {step === 4 && (
-            <div className="py-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
+            <div style={{ padding: "32px 0", textAlign: "center" }}>
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background: "rgba(35,162,109,0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}
+              >
+                <CheckCircle2 size={32} color={F.success} />
               </div>
-              <h1 className="mb-2 text-xl font-bold text-gray-900">
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: F.text, margin: "0 0 8px" }}>
                 가입 완료!
               </h1>
-              <p className="text-sm text-gray-500">
+              <p style={{ fontSize: 13, color: F.muted, margin: 0 }}>
                 잠시 후 지원사업 목록으로 이동합니다...
               </p>
             </div>
