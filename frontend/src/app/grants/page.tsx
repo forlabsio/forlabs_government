@@ -303,7 +303,8 @@ function GrantListContent() {
   const ROW_STYLE: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    padding: "10px 16px",
+    height: 44,
+    padding: "0 16px",
     borderBottom: `1px solid ${FOUNDRY.border}`,
     cursor: "pointer",
     textDecoration: "none",
@@ -442,7 +443,7 @@ function GrantListContent() {
                 border: "none",
                 cursor: "pointer",
                 background: sort === s.value ? FOUNDRY.primary : "transparent",
-                color: sort === s.value ? "#fff" : FOUNDRY.muted,
+                color: sort === s.value ? FOUNDRY.text : FOUNDRY.muted,
               }}
             >
               {s.label}
@@ -755,6 +756,8 @@ function GrantListContent() {
                       <>● LIVE</>
                     ) : grant.status === "마감" ? (
                       <>● 마감</>
+                    ) : grant.status === "진행중" ? (
+                      <>● 진행중</>
                     ) : grant.status ? (
                       grant.status
                     ) : (
@@ -827,7 +830,7 @@ function GrantListContent() {
                   borderRadius: 4,
                   fontSize: 11,
                   fontWeight: isCurrent ? 600 : 400,
-                  color: isCurrent ? "#fff" : FOUNDRY.muted,
+                  color: isCurrent ? FOUNDRY.text : FOUNDRY.muted,
                   textDecoration: "none",
                 }}
               >
