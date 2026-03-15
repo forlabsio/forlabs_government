@@ -277,7 +277,7 @@ export default function MatchingPage() {
             <span
               style={{
                 marginLeft: "auto",
-                background: "rgba(45,114,210,0.15)",
+                background: FOUNDRY.glow,
                 color: FOUNDRY.primary,
                 borderRadius: 999,
                 padding: "2px 8px",
@@ -357,8 +357,8 @@ export default function MatchingPage() {
                     <span
                       style={{
                         flexShrink: 0,
-                        background: "rgba(45,114,210,0.2)",
-                        color: "#6ea8fe",
+                        background: FOUNDRY.glow,
+                        color: FOUNDRY.primary,
                         borderRadius: 4,
                         padding: "2px 6px",
                         fontSize: 10,
@@ -397,7 +397,7 @@ export default function MatchingPage() {
                     {grant.category && (
                       <span
                         style={{
-                          background: "rgba(255,255,255,0.07)",
+                          background: FOUNDRY.border,
                           color: FOUNDRY.muted,
                           borderRadius: 4,
                           padding: "2px 6px",
@@ -422,7 +422,7 @@ export default function MatchingPage() {
                       </span>
                     )}
                     {grant.amount_max && (
-                      <span style={{ fontSize: 11, color: "#06b6d4" }}>
+                      <span style={{ fontSize: 11, color: FOUNDRY.primary }}>
                         최대{" "}
                         {grant.amount_max >= 100000000
                           ? `${(grant.amount_max / 100000000).toFixed(1)}억`
@@ -444,8 +444,8 @@ export default function MatchingPage() {
                         <span
                           key={i}
                           style={{
-                            background: "rgba(6,182,212,0.08)",
-                            color: "#67e8f9",
+                            background: FOUNDRY.glow,
+                            color: FOUNDRY.primary,
                             borderRadius: 999,
                             padding: "2px 8px",
                             fontSize: 10,
