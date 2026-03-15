@@ -23,6 +23,7 @@ import {
 import { FOUNDRY } from "@/lib/theme";
 import { useAuth } from "@/components/AuthProvider";
 import CommandPalette from "@/components/CommandPalette";
+import Toaster from "@/components/Toaster";
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
@@ -726,6 +727,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <CommandPaletteTrigger />
       <CommandPalette />
+      <Toaster />
     </div>
   );
 }

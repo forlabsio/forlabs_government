@@ -9,6 +9,7 @@ import {
   type GraphNode,
 } from "@/lib/api";
 import { GRAPH_COLORS, FOUNDRY } from "@/lib/theme";
+import { toast } from "@/components/Toaster";
 import {
   GitBranch, Loader2, X, ZoomIn, ZoomOut, Maximize2,
   Search, ChevronLeft, TrendingUp, ArrowUpRight,
@@ -96,6 +97,10 @@ export default function GraphPage() {
         const enriched = enrichNodes(d);
         setGraphData(enriched);
         setOverviewCache(enriched);
+        toast("Knowledge Graph 로드 완료", {
+          sub: `${enriched.nodes.length}개 노드 · ${enriched.edges.length}개 엣지`,
+          type: "success",
+        });
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -113,6 +118,10 @@ export default function GraphPage() {
       setMode("drilldown");
       setSelected(null);
       setSearch("");
+      toast(`${result.hub.label} 드릴다운`, {
+        sub: `${result.hub.grant_count}개 과제`,
+        type: "info",
+      });
     } catch (e) {
       console.error(e);
     } finally {
