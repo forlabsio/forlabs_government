@@ -54,14 +54,17 @@ export default function IntelligencePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("govgrants_token") : null;
+    const token = localStorage.getItem("govgrants_token");
     if (!token) return;
+
+    let cancelled = false;
     setLoading(true);
     fetchRecommendations(token, 8)
-      .then((r) => setGrants(r.items))
+      .then((r) => { if (!cancelled) setGrants(r.items); })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -130,6 +133,7 @@ export default function IntelligencePage() {
             <Link
               key={href}
               href={href}
+              aria-label={`${title} — ${desc}`}
               style={{
                 background: FOUNDRY.panel,
                 border: `1px solid ${FOUNDRY.border}`,
@@ -324,6 +328,7 @@ export default function IntelligencePage() {
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <p
+                        title={grant.title}
                         style={{
                           fontSize: 12,
                           fontWeight: 500,
