@@ -358,16 +358,28 @@ export interface GraphNode {
     industry?: string;
     bookmark_count?: number;
     amount_max?: number;
+    // Overview/drilldown fields
+    grant_count?: number;
+    total_amount?: number;
+    weight?: number;
+    is_hub?: boolean;
+    end_date?: string;
+    // Computed for Cytoscape sizing
+    size?: number;
   };
 }
 
 export interface GraphEdge {
-  data: { source: string; target: string; rel: string };
+  data: { source: string; target: string; rel: string; weight?: number };
 }
 
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+}
+
+export interface ExpandResult extends GraphData {
+  hub: { id: string; label: string; type: string; grant_count: number };
 }
 
 export interface TrendData {
@@ -384,6 +396,8 @@ export interface MatchResult {
     end_date?: string;
     organization?: string;
     category?: string;
+    match_score?: number;
+    match_reasons?: string[];
   }[];
   graph: GraphData;
   match_reason: string;
@@ -403,6 +417,18 @@ export async function fetchRecommendations(
 export async function fetchGraphData(limit = 100): Promise<GraphData> {
   const res = await fetch(`${API_URL}/api/intelligence/graph/nodes?limit=${limit}`);
   if (!res.ok) throw new Error("Failed to fetch graph data");
+  return res.json();
+}
+
+export async function fetchGraphOverview(): Promise<GraphData> {
+  const res = await fetch(`${API_URL}/api/intelligence/graph/overview`);
+  if (!res.ok) throw new Error("Failed to fetch graph overview");
+  return res.json();
+}
+
+export async function fetchGraphExpand(nodeId: string): Promise<ExpandResult> {
+  const res = await fetch(`${API_URL}/api/intelligence/graph/expand/${encodeURIComponent(nodeId)}`);
+  if (!res.ok) throw new Error("Failed to expand node");
   return res.json();
 }
 

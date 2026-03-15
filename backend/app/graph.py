@@ -1,3 +1,4 @@
+from __future__ import annotations
 # backend/app/graph.py
 """Neo4j Aura driver singleton and helper utilities."""
 import logging

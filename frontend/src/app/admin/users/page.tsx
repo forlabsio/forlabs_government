@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { fetchUsers, deleteUser, type UserInfo } from "@/lib/api";
+import { FOUNDRY } from "@/lib/theme";
 import {
   Search,
   Trash2,
@@ -11,6 +12,20 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import type { CSSProperties } from "react";
+
+const TH: CSSProperties = {
+  padding: "10px 14px",
+  fontSize: 11,
+  fontWeight: 600,
+  color: FOUNDRY.muted,
+  textAlign: "left",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: `1px solid ${FOUNDRY.border}`,
+  background: FOUNDRY.card,
+  whiteSpace: "nowrap",
+};
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserInfo[]>([]);
@@ -19,6 +34,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(true);
+  const [inputFocused, setInputFocused] = useState(false);
   const pageSize = 20;
 
   const token =
@@ -56,7 +72,7 @@ export default function AdminUsersPage() {
     try {
       await deleteUser(token, userId);
       loadUsers();
-    } catch (err) {
+    } catch {
       alert("삭제에 실패했습니다.");
     }
   }
@@ -64,156 +80,209 @@ export default function AdminUsersPage() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="p-6 sm:p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">회원 관리</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div style={{ padding: "28px 28px 48px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: FOUNDRY.text }}>회원 관리</h1>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: FOUNDRY.muted }}>
           가입한 회원 목록을 확인하고 관리합니다 ({total}명)
         </p>
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+      <form onSubmit={handleSearch} style={{ marginBottom: 20 }}>
+        <div style={{ position: "relative", maxWidth: 360 }}>
+          <Search
+            size={14}
+            color={FOUNDRY.muted}
+            style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}
+          />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             placeholder="이름, 이메일, 기업명 검색"
-            className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              borderRadius: 8,
+              border: `1px solid ${inputFocused ? FOUNDRY.primary : FOUNDRY.border}`,
+              background: FOUNDRY.card,
+              padding: "9px 12px 9px 34px",
+              fontSize: 13,
+              color: FOUNDRY.text,
+              outline: "none",
+              transition: "border-color 0.15s",
+            }}
           />
         </div>
       </form>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50/50">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
-                회원
-              </th>
-              <th className="hidden px-4 py-3 text-left text-xs font-semibold text-gray-500 sm:table-cell">
-                기업
-              </th>
-              <th className="hidden px-4 py-3 text-left text-xs font-semibold text-gray-500 md:table-cell">
-                업종/지역
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">
-                이메일
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">
-                북마크
-              </th>
-              <th className="hidden px-4 py-3 text-left text-xs font-semibold text-gray-500 lg:table-cell">
-                가입일
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">
-                관리
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading ? (
+      <div
+        style={{
+          borderRadius: 10,
+          border: `1px solid ${FOUNDRY.border}`,
+          background: FOUNDRY.panel,
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
-                  로딩 중...
-                </td>
+                <th style={TH}>회원</th>
+                <th style={TH}>기업</th>
+                <th style={TH}>업종/지역</th>
+                <th style={{ ...TH, textAlign: "center" }}>이메일수신</th>
+                <th style={{ ...TH, textAlign: "center" }}>북마크</th>
+                <th style={TH}>가입일</th>
+                <th style={{ ...TH, textAlign: "center" }}>관리</th>
               </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
-                  {search ? "검색 결과가 없습니다" : "가입한 회원이 없습니다"}
-                </td>
-              </tr>
-            ) : (
-              users.map((u) => (
-                <tr key={u.id} className="transition-colors hover:bg-gray-50/50">
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {u.name || "-"}
-                      </p>
-                      <p className="text-xs text-gray-500">{u.email}</p>
-                    </div>
-                  </td>
-                  <td className="hidden px-4 py-3 text-sm text-gray-700 sm:table-cell">
-                    {u.company_name || "-"}
-                  </td>
-                  <td className="hidden px-4 py-3 md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {u.industry && (
-                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-                          {u.industry}
-                        </span>
-                      )}
-                      {u.region && (
-                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-                          {u.region}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {u.email_opt_in ? (
-                      <Mail className="mx-auto h-4 w-4 text-green-500" />
-                    ) : (
-                      <MailMinus className="mx-auto h-4 w-4 text-gray-300" />
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center gap-1 text-sm text-gray-600">
-                      <Bookmark className="h-3.5 w-3.5" />
-                      {u.bookmark_count || 0}
-                    </span>
-                  </td>
-                  <td className="hidden px-4 py-3 text-xs text-gray-500 lg:table-cell">
-                    {u.created_at
-                      ? new Date(u.created_at).toLocaleDateString("ko-KR")
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {u.is_admin ? (
-                      <span className="text-xs font-medium text-blue-600">관리자</span>
-                    ) : (
-                      <button
-                        onClick={() => handleDelete(u.id, u.email)}
-                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                        title="회원 삭제"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: "40px 14px", textAlign: "center", fontSize: 13, color: FOUNDRY.muted }}>
+                    로딩 중...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: "40px 14px", textAlign: "center", fontSize: 13, color: FOUNDRY.muted }}>
+                    {search ? "검색 결과가 없습니다" : "가입한 회원이 없습니다"}
+                  </td>
+                </tr>
+              ) : (
+                users.map((u) => (
+                  <tr
+                    key={u.id}
+                    style={{ transition: "background 0.1s" }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)")}
+                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                  >
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: FOUNDRY.text }}>
+                        {u.name || "-"}
+                      </p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: FOUNDRY.muted }}>{u.email}</p>
+                    </td>
+                    <td style={{ padding: "10px 14px", fontSize: 13, color: FOUNDRY.text, borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      {u.company_name || "-"}
+                    </td>
+                    <td style={{ padding: "10px 14px", borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {u.industry && (
+                          <span style={{ background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted, borderRadius: 4, padding: "2px 7px", fontSize: 11 }}>
+                            {u.industry}
+                          </span>
+                        )}
+                        {u.region && (
+                          <span style={{ background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted, borderRadius: 4, padding: "2px 7px", fontSize: 11 }}>
+                            {u.region}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: "10px 14px", textAlign: "center", borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      {u.email_opt_in ? (
+                        <Mail size={14} color={FOUNDRY.success} style={{ margin: "0 auto" }} />
+                      ) : (
+                        <MailMinus size={14} color="rgba(255,255,255,0.15)" style={{ margin: "0 auto" }} />
+                      )}
+                    </td>
+                    <td style={{ padding: "10px 14px", textAlign: "center", borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: FOUNDRY.muted }}>
+                        <Bookmark size={12} />
+                        {u.bookmark_count || 0}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 14px", fontSize: 12, color: FOUNDRY.muted, borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString("ko-KR") : "-"}
+                    </td>
+                    <td style={{ padding: "10px 14px", textAlign: "center", borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                      {u.is_admin ? (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: FOUNDRY.primary }}>관리자</span>
+                      ) : (
+                        <button
+                          onClick={() => handleDelete(u.id, u.email)}
+                          title="회원 삭제"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            borderRadius: 6,
+                            padding: "5px",
+                            cursor: "pointer",
+                            color: FOUNDRY.muted,
+                            transition: "background 0.12s, color 0.12s",
+                            display: "inline-flex",
+                          }}
+                          onMouseEnter={e => {
+                            (e.currentTarget as HTMLElement).style.background = "rgba(194,48,48,0.15)";
+                            (e.currentTarget as HTMLElement).style.color = FOUNDRY.danger;
+                          }}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLElement).style.background = "transparent";
+                            (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-2">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 20 }}>
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 disabled:opacity-40"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              borderRadius: 7,
+              border: `1px solid ${FOUNDRY.border}`,
+              background: "transparent",
+              padding: "7px 12px",
+              fontSize: 13,
+              color: page <= 1 ? "rgba(255,255,255,0.2)" : FOUNDRY.muted,
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+            }}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft size={13} />
             이전
           </button>
-          <span className="px-3 text-sm text-gray-600">
+          <span style={{ padding: "0 10px", fontSize: 13, color: FOUNDRY.muted }}>
             {page} / {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 disabled:opacity-40"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              borderRadius: 7,
+              border: `1px solid ${FOUNDRY.border}`,
+              background: "transparent",
+              padding: "7px 12px",
+              fontSize: 13,
+              color: page >= totalPages ? "rgba(255,255,255,0.2)" : FOUNDRY.muted,
+              cursor: page >= totalPages ? "not-allowed" : "pointer",
+            }}
           >
             다음
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight size={13} />
           </button>
         </div>
       )}

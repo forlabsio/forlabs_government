@@ -1,3 +1,4 @@
+from __future__ import annotations
 # backend/app/email_service.py
 import logging
 from datetime import date

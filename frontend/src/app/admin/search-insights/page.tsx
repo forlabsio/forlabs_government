@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { fetchSearchInsights, fetchZeroResults } from "@/lib/api";
+import { FOUNDRY } from "@/lib/theme";
 import { TrendingUp, AlertCircle } from "lucide-react";
+import type { CSSProperties } from "react";
 
 interface SearchKeyword {
   keyword: string;
@@ -15,6 +17,18 @@ interface ZeroResultKeyword {
   count: number;
   last_searched: string;
 }
+
+const TH: CSSProperties = {
+  padding: "9px 14px",
+  fontSize: 11,
+  fontWeight: 600,
+  color: FOUNDRY.muted,
+  textAlign: "left",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: `1px solid ${FOUNDRY.border}`,
+  background: FOUNDRY.card,
+};
 
 export default function SearchInsightsPage() {
   const [popular, setPopular] = useState<SearchKeyword[]>([]);
@@ -44,27 +58,111 @@ export default function SearchInsightsPage() {
     load();
   }, [days]);
 
-  return (
-    <div className="px-6 py-8 lg:px-8">
-      {/* Page Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">검색 인사이트</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            사용자들의 검색 패턴을 분석합니다
-          </p>
+  function KeywordTable({
+    data,
+    accentColor,
+    emptyIcon: EmptyIcon,
+    emptyText,
+  }: {
+    data: SearchKeyword[];
+    accentColor: string;
+    emptyIcon: typeof TrendingUp;
+    emptyText: string;
+  }) {
+    if (loading) {
+      return (
+        <div style={{ padding: "16px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ height: 38, borderRadius: 5, background: "rgba(255,255,255,0.04)" }} />
+          ))}
         </div>
-        <div className="flex items-center gap-2">
+      );
+    }
+    if (data.length === 0) {
+      return (
+        <div style={{ padding: "40px 14px", textAlign: "center" }}>
+          <EmptyIcon size={28} color="rgba(255,255,255,0.1)" style={{ marginBottom: 8 }} />
+          <p style={{ margin: 0, fontSize: 13, color: FOUNDRY.muted }}>{emptyText}</p>
+        </div>
+      );
+    }
+    return (
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ ...TH, width: 40 }}>#</th>
+              <th style={TH}>검색어</th>
+              <th style={{ ...TH, textAlign: "right" }}>횟수</th>
+              <th style={{ ...TH, textAlign: "right" }}>최근 검색</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((item, idx) => (
+              <tr
+                key={item.keyword}
+                style={{ transition: "background 0.1s" }}
+                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)")}
+                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+              >
+                <td style={{ padding: "9px 14px", borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                  <span style={{
+                    display: "inline-flex",
+                    width: 22,
+                    height: 22,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 100,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: idx < 3 ? `${accentColor}25` : "rgba(255,255,255,0.06)",
+                    color: idx < 3 ? accentColor : FOUNDRY.muted,
+                  }}>
+                    {idx + 1}
+                  </span>
+                </td>
+                <td style={{ padding: "9px 14px", fontSize: 13, fontWeight: 500, color: FOUNDRY.text, borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                  {item.keyword}
+                </td>
+                <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, fontWeight: 600, color: FOUNDRY.text, borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                  {item.count.toLocaleString()}
+                </td>
+                <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12, color: FOUNDRY.muted, borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                  {item.last_searched}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "28px 28px 48px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: FOUNDRY.text }}>검색 인사이트</h1>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: FOUNDRY.muted }}>사용자들의 검색 패턴을 분석합니다</p>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
           {[7, 14, 30].map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => setDays(d)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                days === d
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
-              }`}
+              style={{
+                borderRadius: 7,
+                border: `1px solid ${days === d ? FOUNDRY.primary : FOUNDRY.border}`,
+                background: days === d ? "rgba(45,114,210,0.15)" : "transparent",
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: days === d ? 600 : 400,
+                color: days === d ? FOUNDRY.primary : FOUNDRY.muted,
+                cursor: "pointer",
+                transition: "all 0.12s",
+              }}
             >
               {d}일
             </button>
@@ -72,149 +170,43 @@ export default function SearchInsightsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: 16 }}>
         {/* Popular Keywords */}
-        <div className="rounded-2xl bg-white shadow-sm">
-          <div className="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+        <div style={{ borderRadius: 10, border: `1px solid ${FOUNDRY.border}`, background: FOUNDRY.panel, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${FOUNDRY.border}`, padding: "14px 18px" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(45,114,210,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <TrendingUp size={15} color={FOUNDRY.primary} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">
-                인기 검색어 TOP 20
-              </h2>
-              <p className="text-xs text-gray-500">최근 {days}일 기준</p>
+              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: FOUNDRY.text }}>인기 검색어 TOP 20</h2>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: FOUNDRY.muted }}>최근 {days}일 기준</p>
             </div>
           </div>
-
-          {loading ? (
-            <div className="p-6">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="mb-3 h-10 animate-pulse rounded-lg bg-gray-50"
-                />
-              ))}
-            </div>
-          ) : popular.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    <th className="px-6 py-3 w-12">#</th>
-                    <th className="px-6 py-3">검색어</th>
-                    <th className="px-6 py-3 text-right">검색 횟수</th>
-                    <th className="px-6 py-3 text-right">최근 검색</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {popular.map((item, idx) => (
-                    <tr
-                      key={item.keyword}
-                      className={idx % 2 === 1 ? "bg-gray-50/50" : ""}
-                    >
-                      <td className="px-6 py-3">
-                        <span
-                          className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                            idx < 3
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                        {item.keyword}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
-                        {item.count.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm text-gray-400">
-                        {item.last_searched}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-12 text-center">
-              <TrendingUp className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-              <p className="text-sm text-gray-400">검색 데이터가 없습니다</p>
-            </div>
-          )}
+          <KeywordTable
+            data={popular}
+            accentColor={FOUNDRY.primary}
+            emptyIcon={TrendingUp}
+            emptyText="검색 데이터가 없습니다"
+          />
         </div>
 
         {/* Zero Results */}
-        <div className="rounded-2xl bg-white shadow-sm">
-          <div className="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
+        <div style={{ borderRadius: 10, border: `1px solid ${FOUNDRY.border}`, background: FOUNDRY.panel, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${FOUNDRY.border}`, padding: "14px 18px" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(194,48,48,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <AlertCircle size={15} color={FOUNDRY.danger} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">
-                결과없는 검색어 (Zero-Result)
-              </h2>
-              <p className="text-xs text-gray-500">
-                데이터 보강이 필요한 검색어
-              </p>
+              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: FOUNDRY.text }}>결과없는 검색어 (Zero-Result)</h2>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: FOUNDRY.muted }}>데이터 보강이 필요한 검색어</p>
             </div>
           </div>
-
-          {loading ? (
-            <div className="p-6">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="mb-3 h-10 animate-pulse rounded-lg bg-gray-50"
-                />
-              ))}
-            </div>
-          ) : zeroResults.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    <th className="px-6 py-3 w-12">#</th>
-                    <th className="px-6 py-3">검색어</th>
-                    <th className="px-6 py-3 text-right">시도 횟수</th>
-                    <th className="px-6 py-3 text-right">최근 검색</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {zeroResults.map((item, idx) => (
-                    <tr
-                      key={item.keyword}
-                      className={idx % 2 === 1 ? "bg-gray-50/50" : ""}
-                    >
-                      <td className="px-6 py-3">
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-50 text-xs font-bold text-red-500">
-                          {idx + 1}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                        {item.keyword}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
-                        {item.count.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-3 text-right text-sm text-gray-400">
-                        {item.last_searched}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-12 text-center">
-              <AlertCircle className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-              <p className="text-sm text-gray-400">
-                Zero-Result 검색어가 없습니다
-              </p>
-            </div>
-          )}
+          <KeywordTable
+            data={zeroResults}
+            accentColor={FOUNDRY.danger}
+            emptyIcon={AlertCircle}
+            emptyText="Zero-Result 검색어가 없습니다"
+          />
         </div>
       </div>
     </div>

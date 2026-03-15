@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fetchDashboard } from "@/lib/api";
+import { FOUNDRY } from "@/lib/theme";
 import {
   Briefcase,
   FileCheck,
@@ -12,6 +13,7 @@ import {
   AlertTriangle,
   RefreshCw,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 
 interface DashboardData {
   total_grants: number;
@@ -36,41 +38,17 @@ interface FetchLog {
 }
 
 const STAT_CARDS = [
-  {
-    key: "total_grants" as const,
-    label: "총 지원사업",
-    icon: Briefcase,
-    iconBg: "bg-blue-50",
-    iconColor: "text-blue-600",
-  },
-  {
-    key: "active_grants" as const,
-    label: "접수중 사업",
-    icon: FileCheck,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-600",
-  },
-  {
-    key: "total_users" as const,
-    label: "총 회원수",
-    icon: Users,
-    iconBg: "bg-amber-50",
-    iconColor: "text-amber-600",
-  },
-  {
-    key: "today_searches" as const,
-    label: "오늘 검색수",
-    icon: Search,
-    iconBg: "bg-purple-50",
-    iconColor: "text-purple-600",
-  },
+  { key: "total_grants"   as const, label: "총 지원사업", icon: Briefcase,  color: FOUNDRY.primary },
+  { key: "active_grants"  as const, label: "접수중 사업", icon: FileCheck,  color: FOUNDRY.success },
+  { key: "total_users"    as const, label: "총 회원수",   icon: Users,      color: FOUNDRY.warning },
+  { key: "today_searches" as const, label: "오늘 검색수", icon: Search,     color: "#8b5cf6" },
 ];
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    success: "bg-emerald-50 text-emerald-700",
-    failed: "bg-red-50 text-red-700",
-    partial: "bg-amber-50 text-amber-700",
+  const styleMap: Record<string, CSSProperties> = {
+    success: { background: "rgba(35,162,109,0.15)",  color: FOUNDRY.success },
+    failed:  { background: "rgba(194,48,48,0.15)",   color: FOUNDRY.danger },
+    partial: { background: "rgba(191,115,38,0.15)",  color: FOUNDRY.warning },
   };
   const icons: Record<string, typeof CheckCircle2> = {
     success: CheckCircle2,
@@ -83,15 +61,44 @@ function StatusBadge({ status }: { status: string }) {
     partial: "부분성공",
   };
   const Icon = icons[status] || CheckCircle2;
+  const s = styleMap[status] ?? styleMap.success;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${styles[status] || styles.success}`}
+      style={{
+        ...s,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        borderRadius: 100,
+        padding: "3px 9px",
+        fontSize: 11,
+        fontWeight: 500,
+      }}
     >
-      <Icon className="h-3 w-3" />
+      <Icon size={11} />
       {labels[status] || status}
     </span>
   );
 }
+
+const TH: CSSProperties = {
+  padding: "10px 16px",
+  fontSize: 11,
+  fontWeight: 600,
+  color: FOUNDRY.muted,
+  textAlign: "left",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: `1px solid ${FOUNDRY.border}`,
+  background: FOUNDRY.card,
+};
+
+const TD: CSSProperties = {
+  padding: "10px 16px",
+  fontSize: 13,
+  color: FOUNDRY.text,
+  borderBottom: `1px solid ${FOUNDRY.border}`,
+};
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData>({
@@ -121,43 +128,61 @@ export default function AdminDashboardPage() {
   }, []);
 
   return (
-    <div className="px-6 py-8 lg:px-8">
+    <div style={{ padding: "28px 28px 48px" }}>
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          서비스 현황을 한눈에 확인하세요
-        </p>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: FOUNDRY.text }}>대시보드</h1>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: FOUNDRY.muted }}>서비스 현황을 한눈에 확인하세요</p>
       </div>
 
       {/* Stat Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: 14,
+          marginBottom: 28,
+        }}
+      >
         {STAT_CARDS.map((card) => {
           const Icon = card.icon;
           const value = data[card.key];
           return (
             <div
               key={card.key}
-              className="rounded-2xl bg-white p-6 shadow-sm"
+              style={{
+                borderRadius: 10,
+                border: `1px solid ${FOUNDRY.border}`,
+                background: FOUNDRY.panel,
+                padding: "20px 22px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    {card.label}
+              <div>
+                <p style={{ margin: 0, fontSize: 12, color: FOUNDRY.muted }}>{card.label}</p>
+                {loading ? (
+                  <div style={{ marginTop: 8, height: 28, width: 80, borderRadius: 5, background: "rgba(255,255,255,0.06)" }} />
+                ) : (
+                  <p style={{ margin: "6px 0 0", fontSize: 26, fontWeight: 700, color: FOUNDRY.text }}>
+                    {(value ?? 0).toLocaleString()}
                   </p>
-                  {loading ? (
-                    <div className="mt-2 h-8 w-20 animate-pulse rounded bg-gray-100" />
-                  ) : (
-                    <p className="mt-1 text-3xl font-bold text-gray-900">
-                      {(value ?? 0).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.iconBg}`}
-                >
-                  <Icon className={`h-6 w-6 ${card.iconColor}`} />
-                </div>
+                )}
+              </div>
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 10,
+                  background: `${card.color}20`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={20} color={card.color} />
               </div>
             </div>
           );
@@ -165,74 +190,69 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Today's Fetch Logs */}
-      <div className="rounded-2xl bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+      <div
+        style={{
+          borderRadius: 10,
+          border: `1px solid ${FOUNDRY.border}`,
+          background: FOUNDRY.panel,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: `1px solid ${FOUNDRY.border}`,
+            padding: "14px 20px",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              오늘의 수집 로그
-            </h2>
-            <p className="text-sm text-gray-500">자동 수집 실행 결과</p>
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: FOUNDRY.text }}>오늘의 수집 로그</h2>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: FOUNDRY.muted }}>자동 수집 실행 결과</p>
           </div>
-          <RefreshCw className="h-4 w-4 text-gray-400" />
+          <RefreshCw size={14} color={FOUNDRY.muted} />
         </div>
 
         {loading ? (
-          <div className="p-6">
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
             {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="mb-3 h-12 animate-pulse rounded-lg bg-gray-50"
-              />
+              <div key={i} style={{ height: 40, borderRadius: 6, background: "rgba(255,255,255,0.04)" }} />
             ))}
           </div>
         ) : data.fetch_logs_today.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr className="border-b border-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  <th className="px-6 py-3">소스</th>
-                  <th className="px-6 py-3">예정 시간</th>
-                  <th className="px-6 py-3">상태</th>
-                  <th className="px-6 py-3">신규</th>
-                  <th className="px-6 py-3">업데이트</th>
-                  <th className="px-6 py-3">오류</th>
+                <tr>
+                  {["소스", "예정 시간", "상태", "신규", "업데이트", "오류"].map((h) => (
+                    <th key={h} style={TH}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {data.fetch_logs_today.map((log, idx) => (
+              <tbody>
+                {data.fetch_logs_today.map((log) => (
                   <tr
                     key={log.id}
-                    className={idx % 2 === 1 ? "bg-gray-50/50" : ""}
+                    style={{ transition: "background 0.1s" }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)")}
+                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "transparent")}
                   >
-                    <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                      {log.source}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-500">
-                      {log.schedule_time}
-                    </td>
-                    <td className="px-6 py-3">
-                      <StatusBadge status={log.status} />
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">
-                      {log.new_count}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">
-                      {log.updated_count}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-gray-400">
-                      {log.error_message || "-"}
-                    </td>
+                    <td style={{ ...TD, fontWeight: 500 }}>{log.source}</td>
+                    <td style={{ ...TD, color: FOUNDRY.muted }}>{log.schedule_time}</td>
+                    <td style={TD}><StatusBadge status={log.status} /></td>
+                    <td style={{ ...TD, color: FOUNDRY.success }}>{log.new_count}</td>
+                    <td style={{ ...TD, color: FOUNDRY.primary }}>{log.updated_count ?? "-"}</td>
+                    <td style={{ ...TD, color: FOUNDRY.muted, maxWidth: 200 }}>{log.error_message || "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="py-12 text-center">
-            <RefreshCw className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-            <p className="text-sm text-gray-400">
-              오늘의 수집 로그가 아직 없습니다
-            </p>
+          <div style={{ padding: "48px 20px", textAlign: "center" }}>
+            <RefreshCw size={28} color="rgba(255,255,255,0.1)" style={{ marginBottom: 10 }} />
+            <p style={{ margin: 0, fontSize: 13, color: FOUNDRY.muted }}>오늘의 수집 로그가 아직 없습니다</p>
           </div>
         )}
       </div>

@@ -1,23 +1,29 @@
 import Link from "next/link";
-import { formatDDay, getDDayColor } from "@/lib/format";
+import { formatDDay, getDDay } from "@/lib/format";
 import type { Grant } from "@/lib/api";
+import { FOUNDRY, SOURCE_LABELS } from "@/lib/theme";
+import type { CSSProperties } from "react";
 
-const SOURCE_COLORS: Record<string, string> = {
-  bizinfo: "bg-blue-50 text-blue-700",
-  kocca: "bg-orange-50 text-orange-700",
-  kstartup: "bg-indigo-50 text-indigo-700",
-  subsidy24: "bg-pink-50 text-pink-700",
-  smes: "bg-purple-50 text-purple-700",
-  default: "bg-gray-50 text-gray-600",
+const SOURCE_STYLES: Record<string, CSSProperties> = {
+  bizinfo:   { background: "rgba(45,114,210,0.15)",  color: "#2D72D2" },
+  kocca:     { background: "rgba(191,115,38,0.15)",  color: "#BF7326" },
+  kstartup:  { background: "rgba(139,92,246,0.15)",  color: "#a78bfa" },
+  subsidy24: { background: "rgba(194,48,48,0.15)",   color: "#ef4444" },
+  smes:      { background: "rgba(139,92,246,0.12)",  color: "#c4b5fd" },
+  default:   { background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted },
 };
 
-const SOURCE_LABELS: Record<string, string> = {
-  bizinfo: "기업마당",
-  kocca: "KOCCA",
-  kstartup: "K-Startup",
-  subsidy24: "보조금24",
-  smes: "중소벤처24",
-};
+function getDDayStyle(deadline: string | undefined): CSSProperties {
+  const dday = getDDay(deadline);
+  if (dday === null) return { background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted };
+  if (dday > 0) return { background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted };
+  const remaining = Math.abs(dday);
+  if (remaining <= 7)
+    return { background: "rgba(194,48,48,0.15)", color: FOUNDRY.danger, border: "1px solid rgba(194,48,48,0.3)" };
+  if (remaining <= 14)
+    return { background: "rgba(191,115,38,0.15)", color: FOUNDRY.warning, border: "1px solid rgba(191,115,38,0.3)" };
+  return { background: "rgba(35,162,109,0.15)", color: FOUNDRY.success, border: "1px solid rgba(35,162,109,0.3)" };
+}
 
 interface GrantCardProps {
   grant: Grant;
@@ -25,29 +31,49 @@ interface GrantCardProps {
 
 export default function GrantCard({ grant }: GrantCardProps) {
   const ddayText = formatDDay(grant.end_date);
-  const ddayColor = getDDayColor(grant.end_date);
+  const ddayStyle = getDDayStyle(grant.end_date);
   const primarySource = grant.sources?.[0] || "default";
-  const sourceColor = SOURCE_COLORS[primarySource] || SOURCE_COLORS.default;
+  const srcStyle = SOURCE_STYLES[primarySource] ?? SOURCE_STYLES.default;
   const sourceLabel = SOURCE_LABELS[primarySource] || primarySource;
 
   return (
-    <Link href={`/grants/${grant.id}`} className="group block">
-      <article className="flex h-full flex-col rounded-xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        {/* Top: D-Day Badge + Sources */}
-        <div className="mb-4 flex items-start justify-between">
-          <span
-            className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-bold ${ddayColor}`}
-          >
+    <Link
+      href={`/grants/${grant.id}`}
+      style={{ display: "block", textDecoration: "none" }}
+      title={grant.title}
+    >
+      <article
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          borderRadius: 10,
+          border: `1px solid ${FOUNDRY.border}`,
+          background: FOUNDRY.card,
+          padding: "18px 20px",
+          transition: "border-color 0.15s, transform 0.15s",
+          cursor: "pointer",
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = FOUNDRY.primary;
+          (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.borderColor = FOUNDRY.border;
+          (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+        }}
+      >
+        {/* Top: D-Day Badge + Source */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <span style={{ ...ddayStyle, display: "inline-flex", alignItems: "center", borderRadius: 7, padding: "4px 10px", fontSize: 12, fontWeight: 700 }}>
             {ddayText}
           </span>
-          <div className="flex gap-1">
-            <span
-              className={`rounded-md px-2 py-1 text-xs font-medium ${sourceColor}`}
-            >
+          <div style={{ display: "flex", gap: 4 }}>
+            <span style={{ ...srcStyle, borderRadius: 5, padding: "3px 8px", fontSize: 11, fontWeight: 500 }}>
               {sourceLabel}
             </span>
             {grant.sources?.length > 1 && (
-              <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
+              <span style={{ background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted, borderRadius: 5, padding: "3px 8px", fontSize: 11, fontWeight: 500 }}>
                 +{grant.sources.length - 1}
               </span>
             )}
@@ -55,31 +81,45 @@ export default function GrantCard({ grant }: GrantCardProps) {
         </div>
 
         {/* Title */}
-        <h3 className="mb-2 line-clamp-2 text-base font-semibold leading-snug text-gray-900 transition-colors group-hover:text-blue-600">
+        <h3
+          style={{
+            margin: "0 0 7px",
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.45,
+            color: FOUNDRY.text,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
           {grant.title}
         </h3>
 
         {/* Organization */}
-        <p className="mb-4 text-sm text-gray-500">{grant.organization}</p>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: FOUNDRY.muted, lineHeight: 1.4 }}>
+          {grant.organization}
+        </p>
 
-        {/* Spacer to push bottom content down */}
-        <div className="mt-auto" />
+        <div style={{ flex: 1 }} />
 
         {/* Bottom: Category + Status */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
           {grant.category && (
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+            <span style={{ background: "rgba(255,255,255,0.06)", color: FOUNDRY.muted, borderRadius: 100, padding: "3px 9px", fontSize: 11, fontWeight: 500 }}>
               {grant.category}
             </span>
           )}
           {grant.status && (
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                grant.status === "접수중"
-                  ? "bg-green-50 text-green-700"
-                  : "bg-gray-100 text-gray-500"
-              }`}
-            >
+            <span style={{
+              background: grant.status === "접수중" ? "rgba(35,162,109,0.15)" : "rgba(255,255,255,0.06)",
+              color: grant.status === "접수중" ? FOUNDRY.success : FOUNDRY.muted,
+              borderRadius: 100,
+              padding: "3px 9px",
+              fontSize: 11,
+              fontWeight: 500,
+            }}>
               {grant.status}
             </span>
           )}

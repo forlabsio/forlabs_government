@@ -5,13 +5,9 @@ import { useAuth } from "@/components/AuthProvider";
 import Link from "next/link";
 import GrantCard from "@/components/GrantCard";
 import type { Grant } from "@/lib/api";
-import {
-  Building2,
-  Bookmark,
-  LogOut,
-  BookmarkX,
-  Search,
-} from "lucide-react";
+import { FOUNDRY } from "@/lib/theme";
+import { Building2, Bookmark, LogOut, BookmarkX, Search } from "lucide-react";
+import type { CSSProperties } from "react";
 
 export default function BookmarksPage() {
   const { user, signOut } = useAuth();
@@ -49,51 +45,107 @@ export default function BookmarksPage() {
         await removeBm(token, grantId);
       } catch { /* ignore */ }
     }
-    const updated = bookmarks.filter((g) => g.id !== grantId);
-    setBookmarks(updated);
+    setBookmarks((prev) => prev.filter((g) => g.id !== grantId));
   }
 
+  const navLinkStyle = (active: boolean): CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 8,
+    padding: "9px 12px",
+    fontSize: 13,
+    fontWeight: active ? 600 : 400,
+    color: active ? FOUNDRY.primary : FOUNDRY.muted,
+    background: active ? "rgba(45,114,210,0.12)" : "transparent",
+    textDecoration: "none",
+    transition: "background 0.12s, color 0.12s",
+    border: "none",
+    cursor: "pointer",
+    width: "100%",
+    textAlign: "left",
+  });
+
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-50">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="flex flex-col gap-8 lg:flex-row">
+    <div
+      style={{
+        height: "calc(100vh - 40px)",
+        overflow: "auto",
+        background: FOUNDRY.bg,
+      }}
+    >
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 20px 64px" }}>
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
           {/* Left Sidebar */}
-          <aside className="w-full lg:w-72">
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <aside style={{ width: 220, flexShrink: 0 }}>
+            <div
+              style={{
+                borderRadius: 10,
+                border: `1px solid ${FOUNDRY.border}`,
+                background: FOUNDRY.panel,
+                padding: "20px 14px",
+              }}
+            >
               {/* Avatar */}
-              <div className="mb-4 flex flex-col items-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 text-2xl font-bold text-blue-600">
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${FOUNDRY.border}` }}>
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    background: "rgba(45,114,210,0.2)",
+                    border: `2px solid rgba(45,114,210,0.4)`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: FOUNDRY.primary,
+                    marginBottom: 10,
+                  }}
+                >
                   {user?.email?.charAt(0).toUpperCase() || "U"}
                 </div>
-                <p className="mt-3 text-sm font-medium text-gray-900">
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: FOUNDRY.text }}>
                   {user?.name || user?.email || "사용자"}
                 </p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
+                <p style={{ margin: "3px 0 0", fontSize: 11, color: FOUNDRY.muted }}>{user?.email}</p>
               </div>
 
-              <hr className="my-4 border-gray-100" />
-
               {/* Navigation */}
-              <nav className="flex flex-col gap-1">
+              <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <Link
                   href="/mypage"
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                  style={navLinkStyle(false)}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                    (e.currentTarget as HTMLElement).style.color = FOUNDRY.text;
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                    (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                  }}
                 >
-                  <Building2 className="h-4 w-4" />
+                  <Building2 size={14} />
                   기업 정보
                 </Link>
-                <Link
-                  href="/mypage/bookmarks"
-                  className="flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700"
-                >
-                  <Bookmark className="h-4 w-4" />
+                <Link href="/mypage/bookmarks" style={navLinkStyle(true)}>
+                  <Bookmark size={14} />
                   관심 사업
                 </Link>
                 <button
                   onClick={signOut}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                  style={navLinkStyle(false)}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.background = "rgba(194,48,48,0.1)";
+                    (e.currentTarget as HTMLElement).style.color = FOUNDRY.danger;
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                    (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                  }}
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut size={14} />
                   로그아웃
                 </button>
               </nav>
@@ -101,27 +153,22 @@ export default function BookmarksPage() {
           </aside>
 
           {/* Right Content */}
-          <div className="flex-1">
-            <div className="mb-6">
-              <h1 className="text-xl font-bold text-gray-900">관심 사업</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                관심있는 지원사업을 모아보세요
-              </p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ marginBottom: 20 }}>
+              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: FOUNDRY.text }}>관심 사업</h1>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: FOUNDRY.muted }}>관심있는 지원사업을 모아보세요</p>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
                 {[...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-64 animate-pulse rounded-xl bg-gray-100"
-                  />
+                  <div key={i} style={{ height: 200, borderRadius: 10, background: "rgba(255,255,255,0.04)" }} />
                 ))}
               </div>
             ) : bookmarks.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
                 {bookmarks.map((grant) => (
-                  <div key={grant.id} className="relative">
+                  <div key={grant.id} style={{ position: "relative" }}>
                     <GrantCard grant={grant} />
                     <button
                       onClick={(e) => {
@@ -129,27 +176,75 @@ export default function BookmarksPage() {
                         handleRemoveBookmark(grant.id);
                       }}
                       title="관심 사업 제거"
-                      className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm transition-colors hover:bg-red-50"
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: 10,
+                        zIndex: 10,
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        background: FOUNDRY.card,
+                        border: `1px solid ${FOUNDRY.border}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "background 0.12s, border-color 0.12s",
+                        color: FOUNDRY.muted,
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.background = "rgba(194,48,48,0.15)";
+                        (e.currentTarget as HTMLElement).style.borderColor = FOUNDRY.danger;
+                        (e.currentTarget as HTMLElement).style.color = FOUNDRY.danger;
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.background = FOUNDRY.card;
+                        (e.currentTarget as HTMLElement).style.borderColor = FOUNDRY.border;
+                        (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                      }}
                     >
-                      <BookmarkX className="h-4 w-4 text-red-500" />
+                      <BookmarkX size={13} />
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
-                <Bookmark className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-                <p className="mb-2 text-lg font-medium text-gray-600">
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: `1px solid ${FOUNDRY.border}`,
+                  background: FOUNDRY.panel,
+                  padding: "56px 20px",
+                  textAlign: "center",
+                }}
+              >
+                <Bookmark size={40} color="rgba(255,255,255,0.1)" style={{ marginBottom: 14 }} />
+                <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 500, color: FOUNDRY.muted }}>
                   아직 등록한 관심 사업이 없습니다
                 </p>
-                <p className="mb-6 text-sm text-gray-400">
+                <p style={{ margin: "0 0 22px", fontSize: 13, color: "rgba(255,255,255,0.2)" }}>
                   관심있는 지원사업을 등록하면 여기에 표시됩니다
                 </p>
                 <Link
                   href="/grants"
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    background: FOUNDRY.primary,
+                    color: "#fff",
+                    borderRadius: 8,
+                    padding: "10px 20px",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    textDecoration: "none",
+                    transition: "opacity 0.15s",
+                  }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = "0.85")}
+                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = "1")}
                 >
-                  <Search className="h-4 w-4" />
+                  <Search size={14} />
                   지원사업 찾기
                 </Link>
               </div>

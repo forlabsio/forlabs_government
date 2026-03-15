@@ -1,3 +1,4 @@
+from __future__ import annotations
 # backend/app/schemas.py
 import uuid
 from datetime import date, datetime
