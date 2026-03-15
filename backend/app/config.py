@@ -16,11 +16,15 @@ class Settings(BaseSettings):
     subsidy24_api_key: str = ""
     smes_api_key: str = ""
 
+    # Neo4j Aura
+    neo4j_uri: str = ""           # e.g. neo4j+s://xxxx.databases.neo4j.io
+    neo4j_username: str = "neo4j"
+    neo4j_password: str = ""
+
     model_config = {"env_file": ".env"}
 
     @property
     def async_database_url(self) -> str:
-        """Ensure database URL uses asyncpg driver."""
         url = self.database_url
         if url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
