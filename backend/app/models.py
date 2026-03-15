@@ -2,6 +2,8 @@
 import uuid
 from datetime import date, datetime
 
+import pgvector.sqlalchemy
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -34,7 +36,7 @@ class User(Base):
     region: Mapped[str | None] = mapped_column(String)
     employee_count: Mapped[int | None] = mapped_column(Integer)
     revenue_range: Mapped[str | None] = mapped_column(String)
-    # profile_embedding = mapped_column(Vector(1536), nullable=True)  # deferred: pgvector not available
+    profile_embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
     email_opt_in: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -62,7 +64,7 @@ class GrantProject(Base):
     organization: Mapped[str | None] = mapped_column(String)
     detail_url: Mapped[str | None] = mapped_column(String)
     view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # content_embedding = mapped_column(Vector(1536), nullable=True)  # deferred: pgvector not available
+    content_embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
     dedup_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
