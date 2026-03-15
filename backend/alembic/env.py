@@ -35,11 +35,17 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations():
+    import ssl as _ssl
+    _connect_args = {}
+    if "supabase.co" in settings.async_database_url:
+        _connect_args["ssl"] = _ssl.create_default_context()
+
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         url=settings.async_database_url,
+        connect_args=_connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
