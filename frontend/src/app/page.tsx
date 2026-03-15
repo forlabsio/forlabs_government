@@ -443,12 +443,12 @@ export default function HomePage() {
                     color: isClosed
                       ? FOUNDRY.muted
                       : isUrgent
-                      ? "#ef4444"
+                      ? FOUNDRY.danger
                       : FOUNDRY.primary,
                     background: isClosed
                       ? "rgba(255,255,255,0.04)"
                       : isUrgent
-                      ? "rgba(239,68,68,0.1)"
+                      ? "rgba(194,48,48,0.12)"
                       : "rgba(45,114,210,0.12)",
                     borderRadius: 4,
                     padding: "2px 6px",
