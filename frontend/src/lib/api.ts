@@ -345,3 +345,96 @@ export async function deleteUser(token: string, userId: string): Promise<void> {
   });
   if (!res.ok) throw new Error("Failed to delete user");
 }
+
+// ─── Intelligence API ────────────────────────────────────
+
+export interface GraphNode {
+  data: {
+    id: string;
+    label: string;
+    type: "Grant" | "Agency" | "TechArea" | "Company";
+    category?: string;
+    organization?: string;
+    industry?: string;
+    bookmark_count?: number;
+    amount_max?: number;
+  };
+}
+
+export interface GraphEdge {
+  data: { source: string; target: string; rel: string };
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export interface TrendData {
+  chart_data: Record<string, string | number>[];
+  categories: string[];
+  agencies: { name: string; count: number }[];
+}
+
+export interface MatchResult {
+  matched_grants: {
+    grant_id: string;
+    title: string;
+    amount_max?: number;
+    end_date?: string;
+    organization?: string;
+    category?: string;
+  }[];
+  graph: GraphData;
+  match_reason: string;
+}
+
+export async function fetchRecommendations(
+  token: string,
+  limit = 10
+): Promise<{ items: Grant[]; total: number }> {
+  const res = await fetch(`${API_URL}/api/intelligence/recommend?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch recommendations");
+  return res.json();
+}
+
+export async function fetchGraphData(limit = 100): Promise<GraphData> {
+  const res = await fetch(`${API_URL}/api/intelligence/graph/nodes?limit=${limit}`);
+  if (!res.ok) throw new Error("Failed to fetch graph data");
+  return res.json();
+}
+
+export async function fetchNodeDetail(nodeId: string): Promise<unknown> {
+  const res = await fetch(`${API_URL}/api/intelligence/graph/node/${nodeId}`);
+  if (!res.ok) throw new Error("Failed to fetch node");
+  return res.json();
+}
+
+export async function fetchTrends(months = 6): Promise<TrendData> {
+  const res = await fetch(`${API_URL}/api/intelligence/trends?months=${months}`);
+  if (!res.ok) throw new Error("Failed to fetch trends");
+  return res.json();
+}
+
+export async function fetchMatchResult(profile: {
+  industry: string;
+  region: string;
+  employee_count?: number;
+  company_age?: number;
+}): Promise<MatchResult> {
+  const res = await fetch(`${API_URL}/api/intelligence/match`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile),
+  });
+  if (!res.ok) throw new Error("Failed to fetch match");
+  return res.json();
+}
+
+export async function fetchNetworkData(): Promise<GraphData & { stats: { company_count: number; edge_count: number } }> {
+  const res = await fetch(`${API_URL}/api/intelligence/network`);
+  if (!res.ok) throw new Error("Failed to fetch network");
+  return res.json();
+}
