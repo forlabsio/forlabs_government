@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "정부지원금 - 중소기업 지원사업 통합 검색",
+  title: "Danbi.Day — 정부 R&D Knowledge Graph",
   description:
-    "중소기업을 위한 정부 지원사업을 한눈에 찾아보세요. AI 기반 맞춤형 검색으로 놓치는 지원금 없이.",
+    "과제·기관·기술분야 관계를 시각화하는 데이터 인텔리전스 플랫폼",
 };
 
 export default function RootLayout({
@@ -29,6 +29,7 @@ export default function RootLayout({
     <html lang="ko">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={{ background: "#0a0e1a" }}
       >
         <AuthProvider>
           <Header />
