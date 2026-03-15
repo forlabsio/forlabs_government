@@ -20,7 +20,7 @@ const KnowledgeGraph = dynamic(() => import("@/components/KnowledgeGraph"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+      <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#2D72D2" }} />
     </div>
   ),
 });
@@ -210,7 +210,7 @@ export default function GraphPage() {
             </>
           ) : (
             <>
-              <GitBranch className="h-4 w-4 shrink-0 text-cyan-400" />
+              <GitBranch className="h-4 w-4 shrink-0" style={{ color: "#2D72D2" }} />
               <span className="text-sm font-semibold text-white">정부 R&amp;D 인텔리전스 그래프</span>
               {overviewStats && (
                 <span className="hidden text-xs text-gray-500 md:inline">
@@ -264,7 +264,7 @@ export default function GraphPage() {
                   className="h-20 w-20 rounded-full"
                   style={{ border: `1px solid ${FOUNDRY.glow}` }}
                 />
-                <Loader2 className="absolute inset-0 m-auto h-9 w-9 animate-spin text-cyan-400" />
+                <Loader2 className="absolute inset-0 m-auto h-9 w-9 animate-spin" style={{ color: "#2D72D2" }} />
               </div>
               <p className="text-sm text-gray-400">
                 {mode === "overview" ? "Knowledge Graph 구성 중…" : "과제 네트워크 분석 중…"}
