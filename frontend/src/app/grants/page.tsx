@@ -6,7 +6,6 @@ import { fetchGrants, searchGrants, type Grant } from "@/lib/api";
 import { formatDDay, getDDay, formatAmount } from "@/lib/format";
 import { ChevronLeft, ChevronRight, ChevronDown, X, Search } from "lucide-react";
 import Link from "next/link";
-import { useAuth } from "@/components/AuthProvider";
 import { FOUNDRY } from "@/lib/theme";
 
 const CATEGORIES = [
@@ -170,17 +169,45 @@ function formatAmountShort(amount: number | undefined): string {
 }
 
 /* ── D-day color helper ── */
-function getDDayColor(dday: number | null): string {
+function getDDayHexColor(dday: number | null): string {
   if (dday === null) return FOUNDRY.muted;
   if (dday > 0) return FOUNDRY.muted;        // expired
   if (dday >= -7) return FOUNDRY.danger;     // urgent (≤7 days)
   return FOUNDRY.primary;                    // normal
 }
 
+// Column widths
+const COL = {
+  dday:     70,
+  title:    "1 1 0%",  // flex value
+  org:      160,
+  category: 100,
+  amount:   100,
+  status:   70,
+};
+
+const HEADER_TEXT: React.CSSProperties = {
+  fontSize: 9,
+  color: FOUNDRY.muted,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  fontWeight: 600,
+};
+
+const ROW_STYLE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  height: 44,
+  padding: "0 16px",
+  borderBottom: `1px solid ${FOUNDRY.border}`,
+  cursor: "pointer",
+  textDecoration: "none",
+  gap: 0,
+};
+
 function GrantListContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
 
   const q = searchParams.get("q") || "";
   const category = searchParams.get("category") || "";
@@ -196,6 +223,7 @@ function GrantListContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState(q);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const loadGrants = useCallback(async () => {
     setLoading(true);
@@ -281,35 +309,6 @@ function GrantListContent() {
   }
 
   const hasActiveFilters = category || source || statusFilter || region;
-
-  // Column widths
-  const COL = {
-    dday:     70,
-    title:    "1 1 0%",  // flex value
-    org:      160,
-    category: 100,
-    amount:   100,
-    status:   70,
-  };
-
-  const HEADER_TEXT: React.CSSProperties = {
-    fontSize: 9,
-    color: FOUNDRY.muted,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    fontWeight: 600,
-  };
-
-  const ROW_STYLE: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    height: 44,
-    padding: "0 16px",
-    borderBottom: `1px solid ${FOUNDRY.border}`,
-    cursor: "pointer",
-    textDecoration: "none",
-    gap: 0,
-  };
 
   return (
     <div
@@ -631,7 +630,7 @@ function GrantListContent() {
             {grants.map((grant) => {
               const dday = getDDay(grant.end_date);
               const ddayText = formatDDay(grant.end_date);
-              const ddayColor = getDDayColor(dday);
+              const ddayColor = getDDayHexColor(dday);
               const isClosed = dday !== null && dday > 0;
 
               return (
@@ -641,15 +640,10 @@ function GrantListContent() {
                   style={{
                     ...ROW_STYLE,
                     opacity: isClosed ? 0.5 : 1,
+                    background: hoveredId === grant.id ? "rgba(255,255,255,0.03)" : "transparent",
                   }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.background =
-                      "rgba(255,255,255,0.03)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.background =
-                      "transparent";
-                  }}
+                  onMouseEnter={() => setHoveredId(grant.id)}
+                  onMouseLeave={() => setHoveredId(null)}
                 >
                   {/* D-DAY */}
                   <div
