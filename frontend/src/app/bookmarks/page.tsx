@@ -8,16 +8,25 @@ import type { Grant } from "@/lib/api";
 import { formatDDay, getDDay, formatAmountRange } from "@/lib/format";
 import {
   Bookmark,
-  BookmarkX,
-  Search,
-  Clock,
   AlertTriangle,
-  ArrowUpDown,
   ExternalLink,
   Building2,
-  Banknote,
-  CalendarDays,
+  X,
 } from "lucide-react";
+
+const F = {
+  bg:      "#0B1117",
+  panel:   "#1C2B3C",
+  card:    "#1F2D3D",
+  border:  "rgba(255,255,255,0.08)",
+  primary: "#2D72D2",
+  glow:    "rgba(45,114,210,0.15)",
+  text:    "#F0F4F8",
+  muted:   "#7B919E",
+  success: "#23A26D",
+  warning: "#BF7326",
+  danger:  "#C23030",
+};
 
 type SortKey = "deadline" | "recent";
 
@@ -28,6 +37,8 @@ export default function BookmarksPage() {
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortKey>("deadline");
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [hoveredRemove, setHoveredRemove] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,7 +72,6 @@ export default function BookmarksPage() {
         /* ignore */
       }
     }
-    // Animate out then remove
     setTimeout(() => {
       setBookmarks((prev) => prev.filter((g) => g.id !== grantId));
       setRemovingId(null);
@@ -77,7 +87,7 @@ export default function BookmarksPage() {
           const db = getDDay(b.end_date);
           if (da === null) return 1;
           if (db === null) return -1;
-          return da - db; // more negative = further deadline = later
+          return da - db;
         });
       case "recent":
         return list.sort((a, b) => {
@@ -102,237 +112,285 @@ export default function BookmarksPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-gray-50">
-        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-          <div className="mb-8 h-8 w-48 animate-pulse rounded-lg bg-gray-200" />
-          <div className="grid gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-32 animate-pulse rounded-2xl bg-white" />
-            ))}
-          </div>
+      <div style={{ height: "calc(100vh - 40px)", overflow: "auto", background: F.bg }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 32px" }}>
+          <div style={{ height: 24, width: 180, background: F.card, borderRadius: 4, marginBottom: 24, opacity: 0.6 }} />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} style={{ height: 52, background: F.card, borderRadius: 4, marginBottom: 1, opacity: 0.4 }} />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-50">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">나의 사업관리</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            관심 사업의 일정과 현황을 한눈에 관리하세요
+    <div style={{ height: "calc(100vh - 40px)", overflow: "auto", background: F.bg }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 32px" }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <Bookmark size={14} color={F.primary} />
+            <span style={{ fontSize: 10, color: F.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              SAVED GRANTS
+            </span>
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: F.text, margin: 0, marginBottom: 4 }}>
+            관심 과제
+          </h1>
+          <p style={{ fontSize: 12, color: F.muted, margin: 0 }}>
+            {bookmarks.length}개 과제 저장됨
           </p>
         </div>
 
-        {/* Summary Cards */}
+        {/* Stats row */}
         {bookmarks.length > 0 && (
-          <div className="mb-6 grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Bookmark className="h-4 w-4" />
-                전체
-              </div>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
-                {bookmarks.length}
-              </p>
+          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            <div style={{ background: F.card, border: `1px solid ${F.border}`, borderRadius: 6, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+              <Bookmark size={12} color={F.muted} />
+              <span style={{ fontSize: 11, color: F.muted }}>전체</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: F.text }}>{bookmarks.length}</span>
             </div>
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-sm text-emerald-600">
-                <Clock className="h-4 w-4" />
-                접수중
-              </div>
-              <p className="mt-1 text-2xl font-bold text-emerald-600">
-                {activeCount}
-              </p>
+            <div style={{ background: F.card, border: `1px solid ${F.border}`, borderRadius: 6, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: F.success }}>접수중</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: F.success }}>{activeCount}</span>
             </div>
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-sm text-red-500">
-                <AlertTriangle className="h-4 w-4" />
-                7일 이내 마감
-              </div>
-              <p className="mt-1 text-2xl font-bold text-red-600">
-                {urgentCount}
-              </p>
+            <div style={{ background: F.card, border: `1px solid ${F.border}`, borderRadius: 6, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertTriangle size={12} color={F.danger} />
+              <span style={{ fontSize: 11, color: F.danger }}>7일 이내 마감</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: F.danger }}>{urgentCount}</span>
             </div>
           </div>
         )}
 
-        {/* Sort Bar */}
+        {/* Sort/Search toolbar */}
         {bookmarks.length > 0 && (
-          <div className="mb-4 flex items-center gap-2">
-            <ArrowUpDown className="h-4 w-4 text-gray-400" />
-            <div className="flex gap-1 rounded-lg bg-white p-1 shadow-sm">
-              {([
-                { key: "deadline", label: "마감순" },
-                { key: "recent", label: "최신순" },
-              ] as { key: SortKey; label: string }[]).map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setSort(opt.key)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    sort === opt.key
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            {([
+              { key: "deadline", label: "마감순" },
+              { key: "recent", label: "최근저장순" },
+            ] as { key: SortKey; label: string }[]).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setSort(opt.key)}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  background: sort === opt.key ? F.glow : "transparent",
+                  color: sort === opt.key ? F.primary : F.muted,
+                  border: sort === opt.key
+                    ? "1px solid rgba(45,114,210,0.3)"
+                    : `1px solid ${F.border}`,
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Bookmark List */}
+        {/* Grant list */}
         {bookmarks.length === 0 ? (
-          <div className="rounded-2xl bg-white py-20 text-center shadow-sm">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
-              <Bookmark className="h-8 w-8 text-blue-400" />
-            </div>
-            <h2 className="mb-2 text-lg font-bold text-gray-900">
-              아직 관리중인 지원사업이 없습니다
-            </h2>
-            <p className="mx-auto mb-8 max-w-sm text-sm text-gray-500">
-              지원사업 목록에서 관심있는 사업을 등록하면
-              <br />
-              마감일 관리와 현황 확인이 편리해집니다
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "80px 32px",
+            background: F.card,
+            border: `1px solid ${F.border}`,
+            borderRadius: 8,
+          }}>
+            <Bookmark size={48} color={F.muted} style={{ marginBottom: 16 }} />
+            <p style={{ fontSize: 14, color: F.muted, margin: 0, marginBottom: 12 }}>
+              저장된 관심 과제가 없습니다.
             </p>
             <Link
               href="/grants"
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              style={{ fontSize: 13, color: F.primary, textDecoration: "none" }}
             >
-              <Search className="h-4 w-4" />
-              지원사업 찾아보기
+              과제 탐색하기
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {sorted.map((grant) => {
+          <div style={{
+            background: F.card,
+            border: `1px solid ${F.border}`,
+            borderRadius: 8,
+            overflow: "hidden",
+          }}>
+            {sorted.map((grant, idx) => {
               const dday = getDDay(grant.end_date);
-              const ddayText = formatDDay(grant.end_date);
               const isUrgent = dday !== null && dday >= -7 && dday <= 0;
               const isClosed = dday !== null && dday > 0;
               const amount = formatAmountRange(grant.amount_min, grant.amount_max);
+              const isRemoving = removingId === grant.id;
+              const isHovered = hoveredRow === grant.id;
+              const isRemoveHovered = hoveredRemove === grant.id;
+
+              let ddayLabel = "";
+              let ddayTop = "";
+              if (isClosed) {
+                ddayLabel = "마감";
+                ddayTop = "";
+              } else if (dday === null) {
+                ddayLabel = "상시";
+                ddayTop = "";
+              } else if (dday === 0) {
+                ddayLabel = "-Day";
+                ddayTop = "D";
+              } else {
+                ddayLabel = String(dday);
+                ddayTop = "D";
+              }
+
+              let badgeBg = F.glow;
+              let badgeColor = F.primary;
+              if (isUrgent) {
+                badgeBg = "rgba(194,48,48,0.15)";
+                badgeColor = F.danger;
+              } else if (isClosed) {
+                badgeBg = "rgba(255,255,255,0.05)";
+                badgeColor = F.muted;
+              }
 
               return (
                 <div
                   key={grant.id}
-                  className={`group rounded-2xl bg-white shadow-sm transition-all duration-300 ${
-                    removingId === grant.id
-                      ? "scale-95 opacity-0"
-                      : "opacity-100"
-                  } ${isClosed ? "opacity-60" : ""} ${
-                    isUrgent ? "ring-1 ring-red-200" : ""
-                  }`}
+                  onMouseEnter={() => setHoveredRow(grant.id)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 14px",
+                    height: 52,
+                    borderBottom: idx < sorted.length - 1 ? `1px solid ${F.border}` : "none",
+                    background: isHovered ? "rgba(255,255,255,0.02)" : "transparent",
+                    transition: "opacity 0.3s, transform 0.3s",
+                    opacity: isRemoving ? 0 : isClosed ? 0.6 : 1,
+                    transform: isRemoving ? "scale(0.98)" : "none",
+                    boxSizing: "border-box",
+                  }}
                 >
-                  <div className="flex items-start gap-4 p-5 sm:p-6">
-                    {/* D-Day Badge */}
-                    <div
-                      className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl text-center ${
-                        isClosed
-                          ? "bg-gray-100 text-gray-400"
-                          : isUrgent
-                          ? "bg-red-50 text-red-600"
-                          : dday !== null
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-gray-50 text-gray-500"
-                      }`}
-                    >
-                      <span className="text-[10px] font-medium leading-none">
-                        {isClosed ? "마감" : dday === null ? "" : "D"}
+                  {/* D-day badge */}
+                  <div style={{
+                    width: 44,
+                    height: 28,
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 4,
+                    background: badgeBg,
+                    lineHeight: 1,
+                  }}>
+                    {ddayTop && (
+                      <span style={{ fontSize: 8, color: badgeColor, fontWeight: 600 }}>
+                        {ddayTop}
                       </span>
-                      <span className="text-lg font-bold leading-tight">
-                        {isClosed
-                          ? ""
-                          : dday === null
-                          ? "상시"
-                          : dday === 0
-                          ? "-Day"
-                          : `${dday}`}
-                      </span>
-                    </div>
-
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        {grant.status && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                              grant.status === "접수중"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {grant.status}
-                          </span>
-                        )}
-                        {grant.category && (
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-                            {grant.category}
-                          </span>
-                        )}
-                        {isUrgent && (
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-red-500">
-                            <AlertTriangle className="h-3 w-3" />
-                            마감임박
-                          </span>
-                        )}
-                      </div>
-
-                      <Link
-                        href={`/grants/${grant.id}`}
-                        className="mb-2 block text-base font-semibold text-gray-900 transition-colors hover:text-blue-600 sm:text-lg"
-                      >
-                        {grant.title}
-                      </Link>
-
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                        {grant.organization && (
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3.5 w-3.5" />
-                            {grant.organization}
-                          </span>
-                        )}
-                        {amount && amount !== "금액 미정" && (
-                          <span className="flex items-center gap-1 font-medium text-blue-600">
-                            <Banknote className="h-3.5 w-3.5" />
-                            {amount}
-                          </span>
-                        )}
-                        {grant.end_date && (
-                          <span className="flex items-center gap-1">
-                            <CalendarDays className="h-3.5 w-3.5" />
-                            {grant.end_date}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex shrink-0 flex-col items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(grant.id)}
-                        title="관심 사업 제거"
-                        className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                      >
-                        <BookmarkX className="h-4.5 w-4.5" />
-                      </button>
-                      {grant.detail_url && (
-                        <a
-                          href={grant.detail_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="원문 보기"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 transition-colors hover:bg-blue-50 hover:text-blue-500"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      )}
-                    </div>
+                    )}
+                    <span style={{ fontSize: ddayTop ? 11 : 10, color: badgeColor, fontWeight: 700 }}>
+                      {ddayLabel}
+                    </span>
                   </div>
+
+                  {/* Title */}
+                  <Link
+                    href={`/grants/${grant.id}`}
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: F.text,
+                      flex: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      textDecoration: "none",
+                      minWidth: 0,
+                    }}
+                  >
+                    {grant.title}
+                  </Link>
+
+                  {/* Org */}
+                  {grant.organization && (
+                    <span style={{
+                      fontSize: 11,
+                      color: F.muted,
+                      width: 140,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}>
+                      <Building2 size={11} color={F.muted} style={{ flexShrink: 0 }} />
+                      {grant.organization}
+                    </span>
+                  )}
+
+                  {/* Amount */}
+                  {amount && amount !== "금액 미정" && (
+                    <span style={{ fontSize: 11, color: F.primary, width: 80, flexShrink: 0, textAlign: "right" }}>
+                      {amount}
+                    </span>
+                  )}
+
+                  {/* External link */}
+                  {grant.detail_url && (
+                    <a
+                      href={grant.detail_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="원문 보기"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 28,
+                        height: 28,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: F.muted,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(grant.id)}
+                    onMouseEnter={() => setHoveredRemove(grant.id)}
+                    onMouseLeave={() => setHoveredRemove(null)}
+                    title="관심 과제 제거"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: isRemoveHovered ? F.danger : F.muted,
+                      flexShrink: 0,
+                      transition: "color 0.15s",
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
                 </div>
               );
             })}

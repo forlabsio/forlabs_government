@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import Link from "next/link";
 import {
   User,
   Building2,
@@ -10,6 +9,20 @@ import {
   Save,
   CheckCircle2,
 } from "lucide-react";
+
+const F = {
+  bg:      "#0B1117",
+  panel:   "#1C2B3C",
+  card:    "#1F2D3D",
+  border:  "rgba(255,255,255,0.08)",
+  primary: "#2D72D2",
+  glow:    "rgba(45,114,210,0.15)",
+  text:    "#F0F4F8",
+  muted:   "#7B919E",
+  success: "#23A26D",
+  warning: "#BF7326",
+  danger:  "#C23030",
+};
 
 const INDUSTRIES = [
   "IT/소프트웨어",
@@ -63,6 +76,82 @@ interface CompanyProfile {
   employeeCount: string;
   revenueRange: string;
   emailNotification: boolean;
+}
+
+const inputStyle: React.CSSProperties = {
+  background: F.card,
+  border: `1px solid ${F.border}`,
+  borderRadius: 6,
+  color: F.text,
+  fontSize: 13,
+  padding: "9px 12px",
+  width: "100%",
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "border-color 0.15s",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: F.muted,
+  marginBottom: 4,
+  display: "block",
+};
+
+function FoundryInput({
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+}: {
+  type?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        ...inputStyle,
+        borderColor: focused ? F.primary : F.border,
+      }}
+    />
+  );
+}
+
+function FoundrySelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  children: React.ReactNode;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <select
+      value={value}
+      onChange={onChange}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        ...inputStyle,
+        borderColor: focused ? F.primary : F.border,
+        appearance: "none",
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </select>
+  );
 }
 
 export default function MyPage() {
@@ -119,10 +208,8 @@ export default function MyPage() {
     setSaved(false);
 
     try {
-      // Save to localStorage as fallback
       localStorage.setItem("govgrants_profile", JSON.stringify(profile));
 
-      // Save to server if token available
       const token = localStorage.getItem("govgrants_token");
       if (token) {
         const { updateProfile } = await import("@/lib/api");
@@ -152,222 +239,233 @@ export default function MyPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-50">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Left Sidebar */}
-          <aside className="w-full lg:w-72">
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              {/* Avatar */}
-              <div className="mb-4 flex flex-col items-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 text-2xl font-bold text-blue-600">
-                  {user?.email?.charAt(0).toUpperCase() || "U"}
-                </div>
-                <p className="mt-3 text-sm font-medium text-gray-900">
-                  {user?.name || user?.email || "사용자"}
-                </p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-              </div>
+    <div style={{ height: "calc(100vh - 40px)", overflow: "auto", background: F.bg }}>
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 32px" }}>
 
-              <hr className="my-4 border-gray-100" />
-
-              {/* Navigation */}
-              <nav className="flex flex-col gap-1">
-                <Link
-                  href="/mypage"
-                  className="flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700"
-                >
-                  <Building2 className="h-4 w-4" />
-                  기업 정보
-                </Link>
-                <button
-                  onClick={signOut}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-                >
-                  <LogOut className="h-4 w-4" />
-                  로그아웃
-                </button>
-              </nav>
-            </div>
-          </aside>
-
-          {/* Right Content */}
-          <div className="flex-1">
-            <div className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
-              <div className="mb-6">
-                <h1 className="text-xl font-bold text-gray-900">기업 정보</h1>
-                <p className="mt-1 text-sm text-gray-500">
-                  기업 정보를 등록하면 맞춤형 지원사업을 추천받을 수 있습니다.
-                </p>
-              </div>
-
-              <form onSubmit={handleSave} className="space-y-6">
-                {/* Company Name */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                    기업명
-                  </label>
-                  <input
-                    type="text"
-                    value={profile.companyName}
-                    onChange={(e) => updateField("companyName", e.target.value)}
-                    placeholder="주식회사 예시"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-
-                {/* Industry + Years */}
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                      업종
-                    </label>
-                    <select
-                      value={profile.industry}
-                      onChange={(e) => updateField("industry", e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    >
-                      <option value="">선택하세요</option>
-                      {INDUSTRIES.map((ind) => (
-                        <option key={ind} value={ind}>
-                          {ind}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                      업력
-                    </label>
-                    <input
-                      type="text"
-                      value={profile.yearsInBusiness}
-                      onChange={(e) =>
-                        updateField("yearsInBusiness", e.target.value)
-                      }
-                      placeholder="예: 3년"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-                </div>
-
-                {/* Region + Employee Count */}
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                      소재지
-                    </label>
-                    <select
-                      value={profile.region}
-                      onChange={(e) => updateField("region", e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    >
-                      <option value="">선택하세요</option>
-                      {REGIONS.map((reg) => (
-                        <option key={reg} value={reg}>
-                          {reg}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                      직원수
-                    </label>
-                    <input
-                      type="text"
-                      value={profile.employeeCount}
-                      onChange={(e) =>
-                        updateField("employeeCount", e.target.value)
-                      }
-                      placeholder="예: 15명"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-                </div>
-
-                {/* Revenue Range */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                    매출 구간
-                  </label>
-                  <select
-                    value={profile.revenueRange}
-                    onChange={(e) =>
-                      updateField("revenueRange", e.target.value)
-                    }
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="">선택하세요</option>
-                    {REVENUE_RANGES.map((rev) => (
-                      <option key={rev} value={rev}>
-                        {rev}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Email Notification Toggle */}
-                <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      이메일 알림 수신
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      맞춤 지원사업이 등록되면 이메일로 알려드립니다
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateField(
-                        "emailNotification",
-                        !profile.emailNotification
-                      )
-                    }
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                      profile.emailNotification ? "bg-blue-600" : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform ${
-                        profile.emailNotification
-                          ? "translate-x-5"
-                          : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Save Button */}
-                <div className="flex items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {saving ? (
-                      <>저장 중...</>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        저장하기
-                      </>
-                    )}
-                  </button>
-                  {saved && (
-                    <span className="flex items-center gap-1 text-sm text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" />
-                      저장되었습니다
-                    </span>
-                  )}
-                </div>
-              </form>
-            </div>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <User size={14} color={F.primary} />
+            <span style={{ fontSize: 10, color: F.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              MY PROFILE
+            </span>
           </div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: F.text, margin: 0, marginBottom: 4 }}>
+            프로필 설정
+          </h1>
+          <p style={{ fontSize: 12, color: F.muted, margin: 0 }}>
+            {user?.email}
+          </p>
         </div>
+
+        {/* Profile form panel */}
+        <div style={{
+          background: F.panel,
+          border: `1px solid ${F.border}`,
+          borderRadius: 8,
+          padding: 24,
+          marginBottom: 16,
+        }}>
+          {/* Section header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
+            <Building2 size={13} color={F.muted} />
+            <span style={{
+              fontSize: 10,
+              color: F.muted,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}>
+              기업 정보
+            </span>
+          </div>
+
+          <form onSubmit={handleSave}>
+            {/* Company Name */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>기업명</label>
+              <FoundryInput
+                value={profile.companyName}
+                onChange={(e) => updateField("companyName", e.target.value)}
+                placeholder="주식회사 예시"
+              />
+            </div>
+
+            {/* Industry + Years — 2-column */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>업종</label>
+                <FoundrySelect
+                  value={profile.industry}
+                  onChange={(e) => updateField("industry", e.target.value)}
+                >
+                  <option value="">선택하세요</option>
+                  {INDUSTRIES.map((ind) => (
+                    <option key={ind} value={ind}>{ind}</option>
+                  ))}
+                </FoundrySelect>
+              </div>
+              <div>
+                <label style={labelStyle}>업력</label>
+                <FoundryInput
+                  value={profile.yearsInBusiness}
+                  onChange={(e) => updateField("yearsInBusiness", e.target.value)}
+                  placeholder="예: 3년"
+                />
+              </div>
+            </div>
+
+            {/* Region + Employee Count — 2-column */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={labelStyle}>소재지</label>
+                <FoundrySelect
+                  value={profile.region}
+                  onChange={(e) => updateField("region", e.target.value)}
+                >
+                  <option value="">선택하세요</option>
+                  {REGIONS.map((reg) => (
+                    <option key={reg} value={reg}>{reg}</option>
+                  ))}
+                </FoundrySelect>
+              </div>
+              <div>
+                <label style={labelStyle}>직원수</label>
+                <FoundryInput
+                  value={profile.employeeCount}
+                  onChange={(e) => updateField("employeeCount", e.target.value)}
+                  placeholder="예: 15명"
+                />
+              </div>
+            </div>
+
+            {/* Revenue Range */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>매출 구간</label>
+              <FoundrySelect
+                value={profile.revenueRange}
+                onChange={(e) => updateField("revenueRange", e.target.value)}
+              >
+                <option value="">선택하세요</option>
+                {REVENUE_RANGES.map((rev) => (
+                  <option key={rev} value={rev}>{rev}</option>
+                ))}
+              </FoundrySelect>
+            </div>
+
+            {/* Email Notification Toggle */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: F.card,
+              border: `1px solid ${F.border}`,
+              borderRadius: 6,
+              padding: "12px 14px",
+              marginBottom: 20,
+            }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 500, color: F.text, margin: 0, marginBottom: 2 }}>
+                  이메일 알림 수신
+                </p>
+                <p style={{ fontSize: 11, color: F.muted, margin: 0 }}>
+                  맞춤 지원사업이 등록되면 이메일로 알려드립니다
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateField("emailNotification", !profile.emailNotification)}
+                style={{
+                  position: "relative",
+                  display: "inline-flex",
+                  height: 24,
+                  width: 44,
+                  flexShrink: 0,
+                  cursor: "pointer",
+                  borderRadius: 12,
+                  border: "none",
+                  background: profile.emailNotification ? F.primary : "rgba(255,255,255,0.12)",
+                  transition: "background 0.2s",
+                  padding: 0,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    height: 20,
+                    width: 20,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+                    position: "absolute",
+                    top: 2,
+                    left: profile.emailNotification ? 22 : 2,
+                    transition: "left 0.2s",
+                  }}
+                />
+              </button>
+            </div>
+
+            {/* Save Button */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: saved ? "rgba(35,162,109,0.15)" : F.primary,
+                  color: saved ? F.success : F.text,
+                  border: saved ? `1px solid ${F.success}` : "none",
+                  borderRadius: 6,
+                  padding: "10px 20px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: saving ? "not-allowed" : "pointer",
+                  opacity: saving ? 0.6 : 1,
+                  transition: "all 0.2s",
+                }}
+              >
+                {saved ? (
+                  <>
+                    <CheckCircle2 size={14} />
+                    저장되었습니다
+                  </>
+                ) : saving ? (
+                  <>저장 중...</>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    저장하기
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Logout button */}
+        <button
+          type="button"
+          onClick={signOut}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "rgba(194,48,48,0.1)",
+            color: F.danger,
+            border: "1px solid rgba(194,48,48,0.2)",
+            borderRadius: 6,
+            padding: "10px 20px",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <LogOut size={14} />
+          로그아웃
+        </button>
+
       </div>
     </div>
   );
