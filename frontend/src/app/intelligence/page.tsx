@@ -15,12 +15,13 @@ import {
   Clock,
 } from "lucide-react";
 import { formatDDay, getDDay } from "@/lib/format";
+import { FOUNDRY } from "@/lib/theme";
 
 const INTELLIGENCE_CARDS = [
   {
     href: "/graph",
     icon: GitBranch,
-    color: "#00d4ff",
+    color: FOUNDRY.primary,
     title: "Knowledge Graph",
     desc: "과제·기관·기술분야 관계 탐색",
   },
@@ -34,7 +35,7 @@ const INTELLIGENCE_CARDS = [
   {
     href: "/network",
     icon: Network,
-    color: "#10b981",
+    color: FOUNDRY.success,
     title: "기업 네트워크",
     desc: "유사 기업 클러스터 분석",
   },
@@ -64,94 +65,224 @@ export default function IntelligencePage() {
   }, []);
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6" style={{ background: "#0a0e1a" }}>
-      <div className="mx-auto max-w-6xl">
+    <div
+      style={{
+        height: "calc(100vh - 40px)",
+        overflow: "auto",
+        background: FOUNDRY.bg,
+      }}
+    >
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 32px" }}>
         {/* Header */}
-        <div className="mb-8">
-          <div className="mb-1 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-cyan-400" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
-              Intelligence Dashboard
+        <div style={{ marginBottom: 32 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 8,
+            }}
+          >
+            <Sparkles style={{ width: 14, height: 14, color: FOUNDRY.muted }} />
+            <span
+              style={{
+                fontSize: 10,
+                color: FOUNDRY.muted,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}
+            >
+              INTELLIGENCE DASHBOARD
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-white">
-            {user?.company_name || user?.name
-              ? `${user.company_name || user.name}님의 대시보드`
-              : "나의 Intelligence 대시보드"}
+          <h1
+            style={{
+              fontSize: 24,
+              color: FOUNDRY.text,
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            나의 Intelligence 대시보드
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p
+            style={{
+              fontSize: 13,
+              color: FOUNDRY.muted,
+              marginTop: 6,
+              marginBottom: 0,
+            }}
+          >
             정부 R&D Knowledge Graph 기반 맞춤형 인텔리전스
           </p>
         </div>
 
-        {/* Intelligence feature cards */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Module Cards */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 12,
+            marginBottom: 32,
+          }}
+        >
           {INTELLIGENCE_CARDS.map(({ href, icon: Icon, color, title, desc }) => (
             <Link
               key={href}
               href={href}
-              className="group rounded-xl p-4 transition-all"
               style={{
-                background: "#0f1628",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: FOUNDRY.panel,
+                border: `1px solid ${FOUNDRY.border}`,
+                borderRadius: 8,
+                padding: 16,
+                textDecoration: "none",
+                display: "block",
               }}
             >
               <div
-                className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
-                style={{ background: `${color}15` }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 6,
+                  background: `${color}15`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 10,
+                }}
               >
-                <Icon className="h-5 w-5" style={{ color }} />
+                <Icon style={{ width: 18, height: 18, color }} />
               </div>
-              <p className="text-sm font-semibold text-white">{title}</p>
-              <p className="mt-0.5 text-xs text-gray-500">{desc}</p>
-              <div
-                className="mt-3 flex items-center gap-1 text-xs"
-                style={{ color }}
+              <p
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: FOUNDRY.text,
+                  margin: 0,
+                }}
               >
-                탐색하기 <ArrowRight className="h-3 w-3" />
+                {title}
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: FOUNDRY.muted,
+                  marginTop: 2,
+                  marginBottom: 0,
+                }}
+              >
+                {desc}
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  marginTop: 12,
+                  color,
+                  fontSize: 11,
+                }}
+              >
+                탐색하기
+                <ArrowRight style={{ width: 12, height: 12 }} />
               </div>
             </Link>
           ))}
         </div>
 
-        {/* AI Recommended Grants */}
+        {/* AI Recommendation Panel */}
         <div
-          className="rounded-xl p-6"
           style={{
-            background: "#0f1628",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: FOUNDRY.panel,
+            border: `1px solid ${FOUNDRY.border}`,
+            borderRadius: 8,
+            padding: 20,
           }}
         >
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-cyan-400" />
-              <h2 className="text-sm font-semibold text-white">AI 맞춤 추천 과제</h2>
+          {/* Panel Header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Sparkles
+                style={{ width: 16, height: 16, color: FOUNDRY.primary }}
+              />
+              <h2
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: FOUNDRY.text,
+                  margin: 0,
+                }}
+              >
+                AI 맞춤 추천 과제
+              </h2>
             </div>
             <Link
               href="/grants"
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
+              style={{
+                fontSize: 12,
+                color: FOUNDRY.muted,
+                textDecoration: "none",
+              }}
             >
-              전체보기 <ArrowRight className="h-3 w-3" />
+              전체보기 →
             </Link>
           </div>
 
+          {/* States */}
           {!user ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-gray-500">맞춤 추천을 받으려면 로그인하세요.</p>
+            <div style={{ padding: "32px 0", textAlign: "center" }}>
+              <p style={{ fontSize: 13, color: FOUNDRY.muted, marginBottom: 12 }}>
+                맞춤 추천을 받으려면 로그인하세요.
+              </p>
               <Link
                 href="/login"
-                className="mt-3 inline-block rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-gray-900"
+                style={{
+                  display: "inline-block",
+                  background: FOUNDRY.primary,
+                  color: FOUNDRY.text,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: "8px 16px",
+                  borderRadius: 6,
+                  textDecoration: "none",
+                }}
               >
                 로그인
               </Link>
             </div>
           ) : loading ? (
-            <div className="flex items-center justify-center gap-2 py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
-              <span className="text-sm text-gray-500">맞춤 과제 분석 중...</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                padding: "32px 0",
+              }}
+            >
+              <Loader2
+                className="animate-spin"
+                style={{ width: 20, height: 20, color: FOUNDRY.primary }}
+              />
+              <span style={{ fontSize: 13, color: FOUNDRY.muted }}>
+                맞춤 과제 분석 중...
+              </span>
             </div>
           ) : grants.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 10,
+              }}
+            >
               {grants.map((grant) => {
                 const dday = getDDay(grant.end_date);
                 const ddayText = formatDDay(grant.end_date);
@@ -160,26 +291,63 @@ export default function IntelligencePage() {
                   <Link
                     key={grant.id}
                     href={`/grants/${grant.id}`}
-                    className="group flex items-start gap-3 rounded-lg p-3 transition-colors"
-                    style={{ background: "#141c30" }}
+                    style={{
+                      background: FOUNDRY.bg,
+                      border: `1px solid ${FOUNDRY.border}`,
+                      borderRadius: 6,
+                      padding: "10px 12px",
+                      display: "flex",
+                      gap: 10,
+                      textDecoration: "none",
+                    }}
                   >
                     <div
-                      className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-[10px] font-bold leading-tight"
                       style={{
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                        borderRadius: 6,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        lineHeight: 1.2,
                         background: isUrgent
-                          ? "rgba(239,68,68,0.1)"
-                          : "rgba(59,130,246,0.1)",
-                        color: isUrgent ? "#ef4444" : "#3b82f6",
+                          ? "rgba(194,48,48,0.15)"
+                          : FOUNDRY.glow,
+                        color: isUrgent ? FOUNDRY.danger : FOUNDRY.primary,
                       }}
                     >
                       {ddayText}
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-white group-hover:text-cyan-400">
+                    <div style={{ minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: FOUNDRY.text,
+                          margin: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {grant.title}
                       </p>
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: FOUNDRY.muted,
+                          marginTop: 4,
+                          marginBottom: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Clock style={{ width: 11, height: 11 }} />
                         {grant.organization || "-"}
                       </p>
                     </div>
@@ -188,13 +356,17 @@ export default function IntelligencePage() {
               })}
             </div>
           ) : (
-            <div className="py-8 text-center">
-              <p className="text-sm text-gray-500">
+            <div style={{ padding: "32px 0", textAlign: "center" }}>
+              <p style={{ fontSize: 13, color: FOUNDRY.muted, marginBottom: 8 }}>
                 프로필을 채우면 맞춤 추천이 시작됩니다.
               </p>
               <Link
                 href="/mypage"
-                className="mt-3 inline-block text-sm text-cyan-400 hover:underline"
+                style={{
+                  fontSize: 13,
+                  color: FOUNDRY.primary,
+                  textDecoration: "none",
+                }}
               >
                 프로필 설정하기
               </Link>
