@@ -120,7 +120,7 @@ export default function GraphPage() {
       setSearch("");
       toast(`${result.hub.label} 드릴다운`, {
         sub: `${result.hub.grant_count}개 과제`,
-        type: "info",
+        type: "success",
       });
     } catch (e) {
       console.error(e);
