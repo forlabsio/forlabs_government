@@ -271,3 +271,14 @@ async def delete_user(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete admin user")
     await db.delete(user)
     await db.commit()
+
+
+@router.post("/sync-graph")
+async def sync_graph_endpoint(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Sync grants from PostgreSQL to Neo4j Knowledge Graph."""
+    from app.sync_graph import sync_all_grants
+    count = await sync_all_grants(db)
+    return {"synced": count}
