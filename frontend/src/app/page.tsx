@@ -2,36 +2,111 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import SearchBar from "@/components/SearchBar";
 import { fetchGrants, type Grant } from "@/lib/api";
 import { formatDDay, getDDay } from "@/lib/format";
+import { FOUNDRY } from "@/lib/theme";
 import {
   ArrowRight,
   GitBranch,
   TrendingUp,
   Network,
   Zap,
-  Flame,
-  Clock,
-  Sparkles,
 } from "lucide-react";
 
-const SOURCE_LABELS: Record<string, string> = {
-  bizinfo: "기업마당",
-  kocca: "KOCCA",
-  kstartup: "K-Startup",
-  subsidy24: "보조금24",
-  smes: "중소벤처24",
-};
+// ─── Intelligence module definitions ─────────────────────
 
-const INTEL_FEATURES = [
-  { href: "/graph", icon: GitBranch, label: "Knowledge Graph", color: "#00d4ff" },
-  { href: "/trends", icon: TrendingUp, label: "트렌드 분석", color: "#f97316" },
-  { href: "/network", icon: Network, label: "기업 네트워크", color: "#10b981" },
-  { href: "/matching", icon: Zap, label: "자동 매칭", color: "#8b5cf6" },
+const INTEL_MODULES = [
+  {
+    href: "/graph",
+    icon: GitBranch,
+    color: "#3b82f6",
+    title: "Knowledge Graph",
+    desc: "과제·기관·기술 관계",
+  },
+  {
+    href: "/trends",
+    icon: TrendingUp,
+    color: "#f97316",
+    title: "트렌드 분석",
+    desc: "기술·산업 동향",
+  },
+  {
+    href: "/network",
+    icon: Network,
+    color: "#8b5cf6",
+    title: "기업 네트워크",
+    desc: "유사기업 클러스터",
+  },
+  {
+    href: "/matching",
+    icon: Zap,
+    color: FOUNDRY.success,
+    title: "자동 매칭",
+    desc: "최적 과제 발굴",
+  },
 ] as const;
 
+// ─── Types ────────────────────────────────────────────────
+
 type Tab = "urgent" | "recent";
+
+// ─── Section header component ─────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        fontSize: 10,
+        color: FOUNDRY.muted,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        marginBottom: 10,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+// ─── Stat card component ──────────────────────────────────
+
+function StatCard({ value, label }: { value: string; label: string }) {
+  return (
+    <div
+      style={{
+        background: FOUNDRY.card,
+        border: `1px solid ${FOUNDRY.border}`,
+        borderRadius: 8,
+        padding: "14px 16px",
+        minWidth: 0,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: "monospace",
+          fontSize: 22,
+          color: FOUNDRY.text,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          marginBottom: 4,
+        }}
+      >
+        {value}
+      </p>
+      <p
+        style={{
+          fontSize: 11,
+          color: FOUNDRY.muted,
+          lineHeight: 1.3,
+        }}
+      >
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ─── Homepage ─────────────────────────────────────────────
 
 export default function HomePage() {
   const [grants, setGrants] = useState<Record<Tab, Grant[]>>({
@@ -41,19 +116,32 @@ export default function HomePage() {
   const [tab, setTab] = useState<Tab>("urgent");
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [acceptingCount, setAcceptingCount] = useState(0);
 
   useEffect(() => {
     async function load() {
       try {
         const [urgentRes, recentRes] = await Promise.all([
-          fetchGrants({ sort: "deadline", size: "10" }).catch(() => null),
-          fetchGrants({ sort: "recent", size: "10" }).catch(() => null),
+          fetchGrants({ sort: "deadline", page_size: "10" }).catch(() => null),
+          fetchGrants({ sort: "recent", page_size: "10" }).catch(() => null),
         ]);
+        const urgentItems = urgentRes?.items || [];
+        const recentItems = recentRes?.items || [];
         setGrants({
-          urgent: urgentRes?.items || [],
-          recent: recentRes?.items || [],
+          urgent: urgentItems,
+          recent: recentItems,
         });
         setTotalCount(urgentRes?.total || recentRes?.total || 0);
+        // Count accepting from combined unique items
+        const combined = [
+          ...urgentItems,
+          ...recentItems.filter(
+            (r) => !urgentItems.some((u) => u.id === r.id)
+          ),
+        ];
+        setAcceptingCount(
+          combined.filter((g) => g.status === "접수중").length
+        );
       } finally {
         setLoading(false);
       }
@@ -61,218 +149,372 @@ export default function HomePage() {
     load();
   }, []);
 
-  return (
-    <div className="min-h-screen" style={{ background: "#0a0e1a" }}>
-      {/* Hero */}
-      <section className="relative overflow-hidden px-4 pb-12 pt-16 sm:px-6">
-        {/* Background grid */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(0,212,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400">
-            <Sparkles className="h-3.5 w-3.5" />
-            정부 R&D Knowledge Graph 플랫폼
-          </div>
-          <h1 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">
-            데이터 인텔리전스로
-            <br />
-            <span style={{ color: "#00d4ff" }}>최적의 정부 지원사업</span>을 찾으세요
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-gray-400 sm:text-base">
-            {totalCount > 0
-              ? `${totalCount.toLocaleString()}개 과제를 Knowledge Graph로 분석`
-              : "과제·기관·기술분야의 관계를 시각화하고 최적의 지원사업을 발굴합니다"}
-          </p>
-          <div className="mx-auto mt-8 max-w-2xl">
-            <SearchBar size="large" />
-          </div>
-        </div>
-      </section>
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-      {/* Intelligence feature strip */}
-      <section className="px-4 pb-10 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {INTEL_FEATURES.map(({ href, icon: Icon, label, color }) => (
-              <Link
-                key={href}
-                href={href}
-                className="group flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all"
+  return (
+    <div
+      style={{
+        padding: "24px 28px",
+        background: FOUNDRY.bg,
+        minHeight: "100%",
+      }}
+    >
+      {/* ── OBJECT OVERVIEW ────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <SectionLabel>Object Overview</SectionLabel>
+        <span style={{ fontSize: 10, color: FOUNDRY.muted }}>
+          as of {timestamp}
+        </span>
+      </div>
+
+      {/* Stat cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 10,
+          marginBottom: 28,
+        }}
+      >
+        <StatCard
+          value={totalCount > 0 ? totalCount.toLocaleString() : "—"}
+          label="Total Grants"
+        />
+        <StatCard
+          value={acceptingCount > 0 ? acceptingCount.toLocaleString() : "—"}
+          label="Accepting Now"
+        />
+        <StatCard value="268" label="Agencies" />
+        <StatCard value="5" label="Tech Areas" />
+      </div>
+
+      {/* ── INTELLIGENCE MODULES ───────────────────────── */}
+      <SectionLabel>Intelligence Modules</SectionLabel>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 10,
+          marginBottom: 28,
+        }}
+      >
+        {INTEL_MODULES.map(({ href, icon: Icon, color, title, desc }) => (
+          <Link
+            key={href}
+            href={href}
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              background: FOUNDRY.card,
+              border: `1px solid ${FOUNDRY.border}`,
+              borderRadius: 8,
+              padding: "12px 14px",
+              textDecoration: "none",
+              cursor: "pointer",
+            }}
+          >
+            {/* Icon box */}
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                flexShrink: 0,
+                borderRadius: 6,
+                background: `${color}1a`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon size={16} color={color} />
+            </div>
+
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
                 style={{
-                  background: "#0f1628",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: FOUNDRY.text,
+                  lineHeight: 1.3,
+                  marginBottom: 2,
                 }}
               >
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                  style={{ background: `${color}15` }}
-                >
-                  <Icon className="h-4 w-4" style={{ color }} />
-                </div>
-                <span className="text-sm font-medium text-gray-300 group-hover:text-white">
-                  {label}
-                </span>
-                <ArrowRight className="ml-auto h-3.5 w-3.5 text-gray-700 group-hover:text-gray-400" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+                {title}
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: FOUNDRY.muted,
+                  lineHeight: 1.3,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {desc}
+              </p>
+            </div>
 
-      {/* Grant list */}
-      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
-        <div className="mb-4 flex items-center justify-between">
+            {/* Arrow */}
+            <ArrowRight size={13} color={FOUNDRY.muted} style={{ flexShrink: 0 }} />
+          </Link>
+        ))}
+      </div>
+
+      {/* ── GRANTS ─────────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <SectionLabel>Grants</SectionLabel>
+
+          {/* Tab switcher */}
           <div
-            className="flex gap-1 rounded-xl p-1"
-            style={{ background: "#0f1628" }}
+            style={{
+              display: "flex",
+              gap: 2,
+              background: FOUNDRY.card,
+              border: `1px solid ${FOUNDRY.border}`,
+              borderRadius: 6,
+              padding: "2px",
+              marginBottom: 10,
+            }}
           >
             {(
               [
-                ["urgent", "마감임박", Flame],
-                ["recent", "최근등록", Clock],
+                ["urgent", "마감임박"],
+                ["recent", "최근등록"],
               ] as const
-            ).map(([key, label, Icon]) => (
+            ).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  tab === key
-                    ? "bg-white/10 text-white"
-                    : "text-gray-500 hover:text-gray-300"
-                }`}
+                style={{
+                  fontSize: 11,
+                  fontWeight: tab === key ? 600 : 400,
+                  color: tab === key ? FOUNDRY.text : FOUNDRY.muted,
+                  background:
+                    tab === key ? "rgba(255,255,255,0.08)" : "transparent",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  transition: "background 0.15s, color 0.15s",
+                }}
               >
-                <Icon className="h-3.5 w-3.5" /> {label}
+                {label}
               </button>
             ))}
           </div>
-          <Link
-            href="/grants"
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300"
-          >
-            전체 {totalCount > 0 && `${totalCount.toLocaleString()}개`}{" "}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
 
-        <div
-          className="overflow-hidden rounded-xl"
-          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+        {/* 전체 보기 */}
+        <Link
+          href="/grants"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 11,
+            color: FOUNDRY.muted,
+            textDecoration: "none",
+            marginBottom: 10,
+          }}
         >
-          {loading ? (
-            <div
-              className="divide-y"
-              style={{ borderColor: "rgba(255,255,255,0.04)" }}
-            >
-              {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-16 animate-pulse px-4 py-3"
-                  style={{ background: "#0f1628" }}
-                >
-                  <div className="h-4 w-3/4 rounded bg-white/5" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="divide-y"
-              style={{ borderColor: "rgba(255,255,255,0.04)" }}
-            >
-              {grants[tab].map((grant) => {
-                const dday = getDDay(grant.end_date);
-                const ddayText = formatDDay(grant.end_date);
-                const isUrgent = dday !== null && dday >= -7 && dday <= 0;
-                const isClosed = dday !== null && dday > 0;
-                const src = grant.sources?.[0] || "default";
+          전체 보기
+          <ArrowRight size={12} />
+        </Link>
+      </div>
 
-                return (
-                  <Link
-                    key={grant.id}
-                    href={`/grants/${grant.id}`}
-                    className={`group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/5 ${
-                      isClosed ? "opacity-40" : ""
-                    }`}
-                    style={{ background: "#0f1628" }}
-                  >
-                    <div
-                      className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-[10px] font-bold leading-tight"
-                      style={{
-                        background: isClosed
-                          ? "rgba(255,255,255,0.05)"
-                          : isUrgent
-                          ? "rgba(239,68,68,0.1)"
-                          : "rgba(59,130,246,0.1)",
-                        color: isClosed
-                          ? "#4a6080"
-                          : isUrgent
-                          ? "#ef4444"
-                          : "#3b82f6",
-                      }}
-                    >
-                      {ddayText}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-200 group-hover:text-white">
-                        {grant.title}
-                      </p>
-                      <div className="mt-0.5 flex items-center gap-3 text-xs text-gray-600">
-                        {grant.organization && (
-                          <span className="truncate">{grant.organization}</span>
-                        )}
-                        {grant.category && <span>{grant.category}</span>}
-                      </div>
-                    </div>
-                    <div className="hidden shrink-0 sm:flex items-center gap-2">
-                      <span
-                        className="rounded px-1.5 py-0.5 text-[10px] font-medium text-gray-500"
-                        style={{ background: "rgba(255,255,255,0.05)" }}
-                      >
-                        {SOURCE_LABELS[src] || src}
-                      </span>
-                      {grant.status === "접수중" && (
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[10px] font-medium text-emerald-400"
-                          style={{ background: "rgba(16,185,129,0.1)" }}
-                        >
-                          접수중
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Data sources footer strip */}
-      <section
-        className="py-8"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      {/* Grants table */}
+      <div
+        style={{
+          background: FOUNDRY.card,
+          border: `1px solid ${FOUNDRY.border}`,
+          borderRadius: 8,
+          overflow: "hidden",
+        }}
       >
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="mb-4 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
-            데이터 소스
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-            {["기업마당", "K-Startup", "KOCCA", "보조금24", "중소벤처24"].map(
-              (source) => (
-                <span key={source} className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
-                  {source}
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                </span>
-              )
-            )}
+        {loading ? (
+          <>
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  height: 48,
+                  background: i % 2 === 0 ? FOUNDRY.card : "transparent",
+                  borderBottom: `1px solid ${FOUNDRY.border}`,
+                  padding: "0 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 20,
+                    borderRadius: 4,
+                    background: "rgba(255,255,255,0.05)",
+                  }}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    height: 12,
+                    borderRadius: 4,
+                    background: "rgba(255,255,255,0.05)",
+                    maxWidth: 320,
+                  }}
+                />
+              </div>
+            ))}
+          </>
+        ) : grants[tab].length === 0 ? (
+          <div
+            style={{
+              padding: "32px 16px",
+              textAlign: "center",
+              fontSize: 12,
+              color: FOUNDRY.muted,
+            }}
+          >
+            데이터를 불러오는 중입니다…
           </div>
-        </div>
-      </section>
+        ) : (
+          grants[tab].map((grant, idx) => {
+            const dday = getDDay(grant.end_date);
+            const ddayText = formatDDay(grant.end_date);
+            const isClosed = dday !== null && dday > 0;
+            const isUrgent = dday !== null && dday <= 0 && dday >= -7;
+            const isLive = grant.status === "접수중";
+
+            return (
+              <Link
+                key={grant.id}
+                href={`/grants/${grant.id}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "0 16px",
+                  height: 48,
+                  borderBottom:
+                    idx < grants[tab].length - 1
+                      ? `1px solid ${FOUNDRY.border}`
+                      : "none",
+                  textDecoration: "none",
+                  background: "transparent",
+                  opacity: isClosed ? 0.45 : 1,
+                  transition: "background 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.background =
+                    "rgba(255,255,255,0.03)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.background =
+                    "transparent";
+                }}
+              >
+                {/* D-day badge */}
+                <span
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: isClosed
+                      ? FOUNDRY.muted
+                      : isUrgent
+                      ? "#ef4444"
+                      : FOUNDRY.primary,
+                    background: isClosed
+                      ? "rgba(255,255,255,0.04)"
+                      : isUrgent
+                      ? "rgba(239,68,68,0.1)"
+                      : "rgba(45,114,210,0.12)",
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    flexShrink: 0,
+                    minWidth: 38,
+                    textAlign: "center",
+                    display: "inline-block",
+                  }}
+                >
+                  {ddayText}
+                </span>
+
+                {/* Title */}
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: FOUNDRY.text,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {grant.title}
+                </span>
+
+                {/* Organization */}
+                {grant.organization && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: FOUNDRY.muted,
+                      flexShrink: 0,
+                      maxWidth: 120,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {grant.organization}
+                  </span>
+                )}
+
+                {/* LIVE badge */}
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    color: isLive ? FOUNDRY.success : FOUNDRY.muted,
+                    background: isLive
+                      ? "rgba(35,162,109,0.12)"
+                      : "rgba(255,255,255,0.04)",
+                    borderRadius: 3,
+                    padding: "2px 5px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {isLive ? "LIVE" : "종료"}
+                </span>
+              </Link>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
