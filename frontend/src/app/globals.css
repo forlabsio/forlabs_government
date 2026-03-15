@@ -1,30 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #111827;
+  /* Palantir dark navy palette */
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #0f1628;
+  --bg-card: #141c30;
+  --bg-card-hover: #1a2540;
+  --bg-elevated: #1e2d4a;
+
+  --text-primary: #e8edf5;
+  --text-secondary: #8fa3c0;
+  --text-muted: #4a6080;
+
+  --accent-cyan: #00d4ff;
+  --accent-blue: #3b82f6;
+  --accent-orange: #f97316;
+  --accent-green: #10b981;
+  --accent-purple: #8b5cf6;
+
+  --border-default: rgba(255,255,255,0.08);
+  --border-accent: rgba(0,212,255,0.3);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-orange: var(--accent-orange);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
 }
+
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide scrollbar for filter chips */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+
+.card-glow {
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  transition: border-color 0.2s, background 0.2s;
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+.card-glow:hover {
+  border-color: var(--border-accent);
+  background: var(--bg-card-hover);
 }
+
+.text-cyan { color: var(--accent-cyan); }
+.text-accent { color: var(--accent-blue); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
