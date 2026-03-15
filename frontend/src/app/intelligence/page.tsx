@@ -295,6 +295,7 @@ export default function IntelligencePage() {
                   <Link
                     key={grant.id}
                     href={`/grants/${grant.id}`}
+                    aria-label={`${grant.title} — ${grant.organization || "기관 미상"}, ${formatDDay(grant.end_date)}`}
                     style={{
                       background: FOUNDRY.bg,
                       border: `1px solid ${FOUNDRY.border}`,
