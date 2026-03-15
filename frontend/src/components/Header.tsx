@@ -3,129 +3,182 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { Menu, X, ChevronDown, User, Bookmark, LogOut, Shield } from "lucide-react";
+import {
+  Menu, X, ChevronDown, User, LogOut, Shield,
+  Network, TrendingUp, GitBranch, Zap, Bookmark,
+} from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+
+const INTELLIGENCE_LINKS = [
+  { href: "/graph", label: "Knowledge Graph", icon: GitBranch, desc: "과제·기관·기술 관계 탐색" },
+  { href: "/trends", label: "트렌드 분석", icon: TrendingUp, desc: "기술·산업별 지원 동향" },
+  { href: "/network", label: "기업 네트워크", icon: Network, desc: "유사 기업 클러스터 분석" },
+  { href: "/matching", label: "자동 매칭", icon: Zap, desc: "내 기업에 맞는 과제 탐색" },
+] as const;
 
 export default function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [intelOpen, setIntelOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const intelRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setDropdownOpen(false);
-      }
+    function handleClick(e: MouseEvent) {
+      if (intelRef.current && !intelRef.current.contains(e.target as Node)) setIntelOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const displayName =
-    user?.name ||
-    user?.email?.split("@")[0] ||
-    "사용자";
-
-  const avatarLetter =
-    user?.email?.charAt(0).toUpperCase() || "U";
-
-  function navLinkClass(href: string) {
-    const isActive =
-      href === "/grants"
-        ? pathname === "/grants" || pathname.startsWith("/grants?")
-        : pathname === href;
-    return `text-sm font-medium transition-colors ${
-      isActive ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
-    }`;
-  }
+  const displayName = user?.name || user?.email?.split("@")[0] || "사용자";
+  const avatarLetter = user?.email?.charAt(0).toUpperCase() || "U";
+  const isIntelligencePath = INTELLIGENCE_LINKS.some((l) => pathname.startsWith(l.href));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header
+      style={{ background: "rgba(10,14,26,0.9)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+      className="sticky top-0 z-50 backdrop-blur-md"
+    >
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-lg font-bold text-blue-600">
-            Danbi.Day
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+            <GitBranch className="h-4 w-4 text-cyan-400" />
+          </div>
+          <span className="text-base font-bold text-white">
+            Danbi<span className="text-cyan-400">.Day</span>
           </span>
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden items-center gap-8 md:flex">
-          <Link href="/grants" className={navLinkClass("/grants")}>
-            지원사업 찾기
+        <nav className="hidden items-center gap-1 md:flex">
+          <Link
+            href="/grants"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              pathname.startsWith("/grants") && !isIntelligencePath
+                ? "bg-blue-500/10 text-blue-400"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            과제 찾기
           </Link>
-          <Link href="/grants?category=자금" className={navLinkClass("/grants?category=자금")}>
-            자금지원
-          </Link>
-          <Link href="/grants?category=R%26D" className={navLinkClass("/grants?category=R%26D")}>
-            R&D
-          </Link>
-          <Link href="/grants?category=보조금" className={navLinkClass("/grants?category=보조금")}>
-            보조금
-          </Link>
+
+          {/* Intelligence Dropdown */}
+          <div className="relative" ref={intelRef}>
+            <button
+              onClick={() => setIntelOpen(!intelOpen)}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                isIntelligencePath
+                  ? "bg-cyan-500/10 text-cyan-400"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              Intelligence
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${intelOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {intelOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 w-72 rounded-xl p-2 shadow-2xl"
+                style={{
+                  background: "#0f1628",
+                  border: "1px solid rgba(0,212,255,0.2)",
+                  boxShadow: "0 0 30px rgba(0,212,255,0.1)",
+                }}
+              >
+                {INTELLIGENCE_LINKS.map(({ href, label, icon: Icon, desc }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setIntelOpen(false)}
+                    className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-white/5"
+                  >
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cyan-500/10">
+                      <Icon className="h-3.5 w-3.5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{label}</p>
+                      <p className="text-xs text-gray-500">{desc}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
           {user && (
             <Link
-              href="/bookmarks"
-              className={`flex items-center gap-1.5 ${navLinkClass("/bookmarks")}`}
+              href="/intelligence"
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                pathname === "/intelligence"
+                  ? "bg-blue-500/10 text-blue-400"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
             >
-              <Bookmark className={`h-4 w-4 ${pathname === "/bookmarks" ? "fill-blue-600" : ""}`} />
-              나의 사업관리
+              내 대시보드
             </Link>
           )}
         </nav>
 
-        {/* Auth Section (Desktop) */}
+        {/* Auth Section */}
         <div className="hidden items-center gap-2 md:flex">
           {loading ? (
-            <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-100" />
+            <div className="h-8 w-20 animate-pulse rounded-lg bg-white/10" />
           ) : user ? (
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={profileRef}>
               <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/5"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-400">
                   {avatarLetter}
                 </div>
-                <span className="max-w-[120px] truncate">{displayName}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                <span className="max-w-[100px] truncate">{displayName}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
               </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-gray-100 bg-white py-1 shadow-lg">
+              {profileOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1 w-44 rounded-xl py-1 shadow-xl"
+                  style={{ background: "#0f1628", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
                   <Link
                     href="/mypage"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
                   >
-                    <User className="h-4 w-4 text-gray-400" />
-                    내 프로필
+                    <User className="h-4 w-4 text-gray-500" /> 내 프로필
+                  </Link>
+                  <Link
+                    href="/bookmarks"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
+                  >
+                    <Bookmark className="h-4 w-4 text-gray-500" /> 북마크
                   </Link>
                   {user?.is_admin && (
                     <Link
                       href="/admin"
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
                     >
-                      <Shield className="h-4 w-4 text-gray-400" />
-                      관리자
+                      <Shield className="h-4 w-4 text-gray-500" /> 관리자
                     </Link>
                   )}
-                  <hr className="my-1 border-gray-100" />
+                  <hr style={{ borderColor: "rgba(255,255,255,0.06)" }} className="my-1" />
                   <button
                     onClick={() => {
-                      setDropdownOpen(false);
+                      setProfileOpen(false);
                       signOut();
                     }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5"
                   >
-                    <LogOut className="h-4 w-4 text-gray-400" />
-                    로그아웃
+                    <LogOut className="h-4 w-4 text-gray-500" /> 로그아웃
                   </button>
                 </div>
               )}
@@ -134,13 +187,13 @@ export default function Header() {
             <>
               <Link
                 href="/login"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5"
               >
                 로그인
               </Link>
               <Link
                 href="/signup"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-cyan-400"
               >
                 회원가입
               </Link>
@@ -149,74 +202,58 @@ export default function Header() {
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="flex items-center gap-3 md:hidden">
-          {user && (
-            <Link
-              href="/bookmarks"
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-gray-50"
-            >
-              <Bookmark className={`h-5 w-5 ${pathname === "/bookmarks" ? "fill-blue-600 text-blue-600" : "text-gray-600"}`} />
-            </Link>
-          )}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? (
-              <X className="h-6 w-6 text-gray-600" />
-            ) : (
-              <Menu className="h-6 w-6 text-gray-600" />
-            )}
-          </button>
-        </div>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="rounded-lg p-2 text-gray-400 hover:bg-white/5 md:hidden"
+        >
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="border-t border-gray-100 bg-white px-4 py-4 md:hidden">
+        <div
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "#0a0e1a" }}
+          className="px-4 py-4 md:hidden"
+        >
           <nav className="flex flex-col gap-1">
             <Link
               href="/grants"
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
               onClick={() => setMobileOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5"
             >
-              지원사업 찾기
+              과제 찾기
             </Link>
-            <Link
-              href="/grants?category=자금"
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              onClick={() => setMobileOpen(false)}
-            >
-              자금지원
-            </Link>
-            <Link
-              href="/grants?category=R%26D"
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              onClick={() => setMobileOpen(false)}
-            >
-              R&D
-            </Link>
+            <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-gray-600">
+              Intelligence
+            </p>
+            {INTELLIGENCE_LINKS.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMobileOpen(false)}
+                className="rounded-lg px-3 py-2.5 pl-6 text-sm text-gray-400 hover:bg-white/5"
+              >
+                {label}
+              </Link>
+            ))}
             {user && (
               <Link
-                href="/bookmarks"
-                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
+                href="/intelligence"
                 onClick={() => setMobileOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5"
               >
-                <Bookmark className="h-4 w-4 fill-blue-600" />
-                나의 사업관리
+                내 대시보드
               </Link>
             )}
-            <hr className="my-2 border-gray-100" />
+            <hr style={{ borderColor: "rgba(255,255,255,0.06)" }} className="my-2" />
             {user ? (
               <>
                 <Link
                   href="/mypage"
-                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600"
                   onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-sm text-gray-300"
                 >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-600">
-                    {avatarLetter}
-                  </div>
                   {displayName}
                 </Link>
                 <button
@@ -224,7 +261,7 @@ export default function Header() {
                     setMobileOpen(false);
                     signOut();
                   }}
-                  className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600"
+                  className="rounded-lg px-3 py-2.5 text-left text-sm text-gray-400"
                 >
                   로그아웃
                 </button>
@@ -233,15 +270,15 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
-                  className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-600"
                   onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-sm text-gray-300"
                 >
                   로그인
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white"
                   onClick={() => setMobileOpen(false)}
+                  className="rounded-lg bg-cyan-500 px-3 py-2.5 text-sm font-medium text-gray-900"
                 >
                   회원가입
                 </Link>
