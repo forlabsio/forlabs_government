@@ -2,28 +2,12 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import SearchBar from "@/components/SearchBar";
 import { fetchGrants, searchGrants, type Grant } from "@/lib/api";
-import {
-  formatDDay,
-  getDDay,
-  formatShortDate,
-} from "@/lib/format";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ListFilter,
-  Building2,
-  LayoutGrid,
-  LayoutList,
-  Bookmark,
-  Eye,
-  Calendar,
-  X,
-} from "lucide-react";
+import { formatDDay, getDDay, formatAmount } from "@/lib/format";
+import { ChevronLeft, ChevronRight, ChevronDown, X, Search } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { FOUNDRY } from "@/lib/theme";
 
 const CATEGORIES = [
   { label: "전체", value: "" },
@@ -79,25 +63,9 @@ const REGIONS = [
   { label: "제주", value: "제주" },
 ];
 
-const SOURCE_LABELS: Record<string, string> = {
-  bizinfo: "기업마당",
-  kocca: "KOCCA",
-  kstartup: "K-Startup",
-  subsidy24: "보조금24",
-  smes: "중소벤처24",
-};
-
-const SOURCE_COLORS: Record<string, string> = {
-  bizinfo: "text-blue-700 bg-blue-50",
-  kocca: "text-orange-700 bg-orange-50",
-  kstartup: "text-indigo-700 bg-indigo-50",
-  subsidy24: "text-pink-700 bg-pink-50",
-  smes: "text-purple-700 bg-purple-50",
-};
-
 const PAGE_SIZE = 20;
 
-/* ── Dropdown filter component ── */
+/* ── Foundry FilterDropdown ── */
 function FilterDropdown({
   label,
   value,
@@ -112,25 +80,52 @@ function FilterDropdown({
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
   const displayLabel = value ? selected?.label || value : label;
+  const isActive = Boolean(value);
 
   return (
-    <div className="relative">
+    <div style={{ position: "relative" }}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-          value
-            ? "border-blue-200 bg-blue-50 text-blue-700"
-            : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-        }`}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          background: isActive ? FOUNDRY.glow : "transparent",
+          border: `1px solid ${isActive ? FOUNDRY.primary : FOUNDRY.border}`,
+          borderRadius: 4,
+          color: isActive ? FOUNDRY.primary : FOUNDRY.muted,
+          padding: "5px 10px",
+          fontSize: 11,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
       >
         {displayLabel}
-        <ChevronDown className="h-3.5 w-3.5" />
+        <ChevronDown size={11} />
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-20 mt-1 max-h-60 w-40 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 10 }}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: "calc(100% + 4px)",
+              zIndex: 20,
+              background: FOUNDRY.card,
+              border: `1px solid ${FOUNDRY.border}`,
+              borderRadius: 6,
+              padding: "4px 0",
+              minWidth: 140,
+              maxHeight: 240,
+              overflowY: "auto",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}
+          >
             {options.map((opt) => (
               <button
                 key={opt.value || "__all__"}
@@ -139,11 +134,17 @@ function FilterDropdown({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`block w-full px-3 py-2 text-left text-xs transition-colors ${
-                  value === opt.value
-                    ? "bg-blue-50 font-semibold text-blue-700"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "6px 12px",
+                  textAlign: "left",
+                  fontSize: 12,
+                  background: value === opt.value ? FOUNDRY.glow : "transparent",
+                  color: value === opt.value ? FOUNDRY.primary : FOUNDRY.text,
+                  border: "none",
+                  cursor: "pointer",
+                }}
               >
                 {opt.label}
               </button>
@@ -153,6 +154,27 @@ function FilterDropdown({
       )}
     </div>
   );
+}
+
+/* ── Amount formatter: abbreviated Korean format ── */
+function formatAmountShort(amount: number | undefined): string {
+  if (!amount) return "—";
+  if (amount >= 100000000) {
+    const eok = amount / 100000000;
+    return Number.isInteger(eok) ? `${eok}억` : `${eok.toFixed(1)}억`;
+  }
+  if (amount >= 10000) {
+    return `${Math.round(amount / 10000)}만`;
+  }
+  return `${amount.toLocaleString()}`;
+}
+
+/* ── D-day color helper ── */
+function getDDayColor(dday: number | null): string {
+  if (dday === null) return FOUNDRY.muted;
+  if (dday > 0) return FOUNDRY.muted;        // expired
+  if (dday >= -7) return FOUNDRY.danger;     // urgent (≤7 days)
+  return FOUNDRY.primary;                    // normal
 }
 
 function GrantListContent() {
@@ -173,7 +195,7 @@ function GrantListContent() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"list" | "grid">("list");
+  const [searchInput, setSearchInput] = useState(q);
 
   const loadGrants = useCallback(async () => {
     setLoading(true);
@@ -218,6 +240,11 @@ function GrantListContent() {
     loadGrants();
   }, [loadGrants]);
 
+  // Sync search input with URL param
+  useEffect(() => {
+    setSearchInput(q);
+  }, [q]);
+
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (value) {
@@ -241,469 +268,604 @@ function GrantListContent() {
     return `/grants?${params.toString()}`;
   }
 
-  async function handleBookmark(grantId: string) {
-    const token = localStorage.getItem("govgrants_token");
-    if (!token) {
-      router.push("/login");
-      return;
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const params = new URLSearchParams(searchParams.toString());
+    if (searchInput.trim()) {
+      params.set("q", searchInput.trim());
+    } else {
+      params.delete("q");
     }
-    try {
-      const { addBookmark } = await import("@/lib/api");
-      await addBookmark(token, grantId);
-    } catch {
-      /* ignore */
-    }
+    params.delete("page");
+    router.push(`/grants?${params.toString()}`);
   }
 
   const hasActiveFilters = category || source || statusFilter || region;
 
-  return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6 sm:py-8">
-        {/* Search */}
-        <div className="mb-5">
-          <SearchBar defaultValue={q} />
-        </div>
+  // Column widths
+  const COL = {
+    dday:     70,
+    title:    "1 1 0%",  // flex value
+    org:      160,
+    category: 100,
+    amount:   100,
+    status:   70,
+  };
 
-        {/* Category chips */}
-        <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          {CATEGORIES.map((cat) => (
+  const HEADER_TEXT: React.CSSProperties = {
+    fontSize: 9,
+    color: FOUNDRY.muted,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontWeight: 600,
+  };
+
+  const ROW_STYLE: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    padding: "10px 16px",
+    borderBottom: `1px solid ${FOUNDRY.border}`,
+    cursor: "pointer",
+    textDecoration: "none",
+    gap: 0,
+  };
+
+  return (
+    <div
+      style={{
+        background: FOUNDRY.bg,
+        minHeight: "100vh",
+        padding: "16px 20px",
+      }}
+    >
+      {/* ── Page header ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 10,
+          marginBottom: 14,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: FOUNDRY.text,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+          }}
+        >
+          Grants
+        </span>
+        {!loading && (
+          <span style={{ fontSize: 11, color: FOUNDRY.muted }}>
+            {total.toLocaleString()} results
+          </span>
+        )}
+        {loading && (
+          <span style={{ fontSize: 11, color: FOUNDRY.muted }}>loading...</span>
+        )}
+      </div>
+
+      {/* ── Filter / search row ── */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 12,
+        }}
+      >
+        {/* Search input */}
+        <form onSubmit={handleSearchSubmit} style={{ display: "flex", alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: FOUNDRY.card,
+              border: `1px solid ${FOUNDRY.border}`,
+              borderRadius: 4,
+              padding: "5px 10px",
+              gap: 6,
+            }}
+          >
+            <Search size={12} style={{ color: FOUNDRY.muted, flexShrink: 0 }} />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="검색..."
+              style={{
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                fontSize: 12,
+                color: FOUNDRY.text,
+                width: 160,
+              }}
+            />
+          </div>
+        </form>
+
+        {/* Category filter */}
+        <FilterDropdown
+          label="카테고리"
+          value={category}
+          options={CATEGORIES}
+          onChange={(v) => updateParam("category", v)}
+        />
+
+        {/* Status filter */}
+        <FilterDropdown
+          label="상태"
+          value={statusFilter}
+          options={STATUSES}
+          onChange={(v) => updateParam("status", v)}
+        />
+
+        {/* Source filter */}
+        <FilterDropdown
+          label="출처"
+          value={source}
+          options={SOURCES}
+          onChange={(v) => updateParam("source", v)}
+        />
+
+        {/* Region filter */}
+        <FilterDropdown
+          label="지역"
+          value={region}
+          options={REGIONS}
+          onChange={(v) => updateParam("region", v)}
+        />
+
+        {/* Sort */}
+        <div
+          style={{
+            display: "flex",
+            background: FOUNDRY.card,
+            border: `1px solid ${FOUNDRY.border}`,
+            borderRadius: 4,
+            overflow: "hidden",
+          }}
+        >
+          {SORTS.map((s) => (
             <button
-              key={cat.value || "all"}
+              key={s.value}
               type="button"
-              onClick={() => updateParam("category", cat.value)}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all sm:text-sm ${
-                category === cat.value
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white text-gray-600 hover:bg-gray-100"
-              }`}
+              onClick={() => updateParam("sort", s.value)}
+              style={{
+                padding: "5px 10px",
+                fontSize: 11,
+                border: "none",
+                cursor: "pointer",
+                background: sort === s.value ? FOUNDRY.primary : "transparent",
+                color: sort === s.value ? "#fff" : FOUNDRY.muted,
+              }}
             >
-              {cat.label}
+              {s.label}
             </button>
           ))}
         </div>
 
-        {/* Filters Row: dropdowns + sort + view toggle */}
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterDropdown
-              label="출처"
-              value={source}
-              options={SOURCES}
-              onChange={(v) => updateParam("source", v)}
-            />
-            <FilterDropdown
-              label="상태"
-              value={statusFilter}
-              options={STATUSES}
-              onChange={(v) => updateParam("status", v)}
-            />
-            <FilterDropdown
-              label="지역"
-              value={region}
-              options={REGIONS}
-              onChange={(v) => updateParam("region", v)}
-            />
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:text-red-500"
-              >
-                <X className="h-3.5 w-3.5" />
-                초기화
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex gap-0.5 rounded-lg bg-white p-0.5 shadow-sm">
-              {SORTS.map((s) => (
-                <button
-                  key={s.value}
-                  type="button"
-                  onClick={() => updateParam("sort", s.value)}
-                  className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                    sort === s.value
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            <div className="hidden gap-0.5 rounded-lg bg-white p-0.5 shadow-sm sm:flex">
-              <button
-                type="button"
-                title="리스트 보기"
-                onClick={() => setView("list")}
-                className={`rounded-md p-1.5 ${
-                  view === "list"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                title="그리드 보기"
-                onClick={() => setView("grid")}
-                className={`rounded-md p-1.5 ${
-                  view === "grid"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Results count */}
-        <div className="mb-3 flex items-center gap-2 text-xs text-gray-400">
-          <ListFilter className="h-3.5 w-3.5" />
-          {loading ? (
-            <span>검색 중...</span>
-          ) : (
-            <span>
-              총{" "}
-              <span className="font-semibold text-gray-600">
-                {total.toLocaleString()}
-              </span>
-              개
-              {q && <> &middot; &ldquo;{q}&rdquo;</>}
-            </span>
-          )}
-        </div>
-
-        {/* Content */}
-        {loading ? (
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            {[...Array(10)].map((_, i) => (
-              <div
-                key={i}
-                className="h-14 animate-pulse border-b border-gray-50 px-4 py-3"
-              >
-                <div className="h-4 w-2/3 rounded bg-gray-100" />
-              </div>
-            ))}
-          </div>
-        ) : grants.length > 0 ? (
-          view === "list" ? (
-            /* ===== LIST VIEW ===== */
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-              {/* Table header - desktop */}
-              <div className="hidden border-b border-gray-100 bg-gray-50/50 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider text-gray-400 lg:grid lg:grid-cols-22 lg:gap-3">
-                <div className="col-span-2 text-center">D-Day</div>
-                <div className="col-span-10 text-center">사업명</div>
-                <div className="col-span-3 text-center">기관</div>
-                <div className="col-span-3 text-center">기간</div>
-                <div className="col-span-2 text-center">출처</div>
-                <div className="col-span-2 text-center">상태</div>
-              </div>
-
-              <div className="divide-y divide-gray-50">
-                {grants.map((grant) => {
-                  const dday = getDDay(grant.end_date);
-                  const ddayText = formatDDay(grant.end_date);
-                  const isUrgent = dday !== null && dday >= -7 && dday <= 0;
-                  const isClosed = dday !== null && dday > 0;
-                  const src = grant.sources?.[0] || "default";
-
-                  return (
-                    <div
-                      key={grant.id}
-                      className={`group relative transition-colors hover:bg-blue-50/30 ${
-                        isClosed ? "opacity-50" : ""
-                      }`}
-                    >
-                      <Link href={`/grants/${grant.id}`} className="block">
-                        {/* Mobile */}
-                        <div className="flex items-center gap-3 px-4 py-3 lg:hidden">
-                          <div
-                            className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-center text-[10px] font-bold leading-tight ${
-                              isClosed
-                                ? "bg-gray-100 text-gray-400"
-                                : isUrgent
-                                ? "bg-red-50 text-red-600"
-                                : dday !== null
-                                ? "bg-blue-50 text-blue-600"
-                                : "bg-gray-50 text-gray-500"
-                            }`}
-                          >
-                            {ddayText}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-blue-600">
-                              {grant.title}
-                            </p>
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-500">
-                              {grant.organization && (
-                                <span className="truncate">
-                                  {grant.organization}
-                                </span>
-                              )}
-                            </div>
-                            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-gray-400">
-                              <span className="flex items-center gap-0.5">
-                                <Calendar className="h-2.5 w-2.5" />
-                                {formatShortDate(grant.start_date)} ~ {formatShortDate(grant.end_date)}
-                              </span>
-                              <span className="flex items-center gap-0.5">
-                                <Eye className="h-2.5 w-2.5" />
-                                {(grant.view_count || 0).toLocaleString()}
-                              </span>
-                              <span
-                                className={`rounded px-1 py-0.5 text-[9px] font-medium ${
-                                  SOURCE_COLORS[src] || "bg-gray-50 text-gray-500"
-                                }`}
-                              >
-                                {SOURCE_LABELS[src] || src}
-                              </span>
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
-                        </div>
-
-                        {/* Desktop */}
-                        <div className="hidden items-center gap-3 px-5 py-2.5 lg:grid lg:grid-cols-22">
-                          {/* D-Day */}
-                          <div className="col-span-2 text-center">
-                            <span
-                              className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-bold ${
-                                isClosed
-                                  ? "bg-gray-100 text-gray-400"
-                                  : isUrgent
-                                  ? "bg-red-50 text-red-600"
-                                  : dday !== null
-                                  ? "bg-blue-50 text-blue-600"
-                                  : "bg-gray-50 text-gray-500"
-                              }`}
-                            >
-                              {ddayText}
-                            </span>
-                          </div>
-                          {/* Title */}
-                          <div className="col-span-10 min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-blue-600">
-                              {grant.title}
-                            </p>
-                            {grant.category && (
-                              <span className="text-[11px] text-gray-400">
-                                {grant.category}
-                              </span>
-                            )}
-                          </div>
-                          {/* Organization */}
-                          <div className="col-span-3 min-w-0">
-                            <p className="flex items-center gap-1 truncate text-xs text-gray-500">
-                              <Building2 className="h-3 w-3 shrink-0" />
-                              {grant.organization || "-"}
-                            </p>
-                          </div>
-                          {/* Period (start ~ end) */}
-                          <div className="col-span-3 text-center text-[11px] text-gray-400">
-                            {formatShortDate(grant.start_date)} ~ {formatShortDate(grant.end_date)}
-                          </div>
-                          {/* Source */}
-                          <div className="col-span-2 text-center">
-                            <span
-                              className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                                SOURCE_COLORS[src] ||
-                                "bg-gray-50 text-gray-500"
-                              }`}
-                            >
-                              {SOURCE_LABELS[src] || src}
-                            </span>
-                          </div>
-                          {/* Status */}
-                          <div className="col-span-2 text-center">
-                            {grant.status && (
-                              <span
-                                className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                  grant.status === "접수중"
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : grant.status === "진행중"
-                                    ? "bg-blue-50 text-blue-700"
-                                    : "bg-gray-100 text-gray-500"
-                                }`}
-                              >
-                                {grant.status}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-
-                      {/* Bookmark button (desktop hover) */}
-                      {user && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleBookmark(grant.id);
-                          }}
-                          className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-lg p-1.5 text-gray-300 transition-all hover:bg-blue-50 hover:text-blue-500 group-hover:lg:block"
-                          title="관심 사업"
-                        >
-                          <Bookmark className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            /* ===== GRID VIEW ===== */
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {grants.map((grant) => {
-                const ddayText = formatDDay(grant.end_date);
-                const dday = getDDay(grant.end_date);
-                const isUrgent = dday !== null && dday >= -7 && dday <= 0;
-                const isClosed = dday !== null && dday > 0;
-                const src = grant.sources?.[0] || "default";
-
-                return (
-                  <Link
-                    key={grant.id}
-                    href={`/grants/${grant.id}`}
-                    className="group block"
-                  >
-                    <article
-                      className={`flex h-full flex-col rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                        isClosed ? "opacity-50" : ""
-                      }`}
-                    >
-                      <div className="mb-3 flex items-start justify-between">
-                        <span
-                          className={`rounded-md px-2 py-1 text-xs font-bold ${
-                            isClosed
-                              ? "bg-gray-100 text-gray-400"
-                              : isUrgent
-                              ? "bg-red-50 text-red-600"
-                              : dday !== null
-                              ? "bg-blue-50 text-blue-600"
-                              : "bg-gray-50 text-gray-500"
-                          }`}
-                        >
-                          {ddayText}
-                        </span>
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                            SOURCE_COLORS[src] || "bg-gray-50 text-gray-500"
-                          }`}
-                        >
-                          {SOURCE_LABELS[src] || src}
-                        </span>
-                      </div>
-                      <h3 className="mb-1.5 line-clamp-2 text-sm font-semibold text-gray-900 group-hover:text-blue-600">
-                        {grant.title}
-                      </h3>
-                      <p className="mb-2 text-xs text-gray-500">
-                        {grant.organization}
-                      </p>
-                      {/* Dates row */}
-                      <div className="mb-3 flex items-center gap-3 text-[10px] text-gray-400">
-                        <span className="flex items-center gap-0.5">
-                          <Calendar className="h-2.5 w-2.5" />
-                          {formatShortDate(grant.start_date)} ~ {formatShortDate(grant.end_date)}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <Eye className="h-2.5 w-2.5" />
-                          {(grant.view_count || 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="mt-auto" />
-                      <div className="flex items-center gap-1.5">
-                        {grant.category && (
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                            {grant.category}
-                          </span>
-                        )}
-                        {grant.status && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                              grant.status === "접수중"
-                                ? "bg-green-50 text-green-700"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {grant.status}
-                          </span>
-                        )}
-                      </div>
-                    </article>
-                  </Link>
-                );
-              })}
-            </div>
-          )
-        ) : (
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-20 text-center">
-            <p className="text-lg font-medium text-gray-400">
-              검색 결과가 없습니다
-            </p>
-            <p className="mt-2 text-sm text-gray-400">
-              다른 검색어나 필터를 시도해보세요
-            </p>
-          </div>
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "transparent",
+              border: "none",
+              color: FOUNDRY.muted,
+              fontSize: 11,
+              cursor: "pointer",
+              padding: "5px 6px",
+            }}
+          >
+            <X size={11} />
+            초기화
+          </button>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-1.5">
-            {currentPage > 1 && (
-              <a
-                href={buildPageUrl(currentPage - 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                이전
-              </a>
-            )}
-
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              let page: number;
-              if (totalPages <= 7) {
-                page = i + 1;
-              } else if (currentPage <= 4) {
-                page = i + 1;
-              } else if (currentPage >= totalPages - 3) {
-                page = totalPages - 6 + i;
-              } else {
-                page = currentPage - 3 + i;
-              }
-              return (
-                <a
-                  key={page}
-                  href={buildPageUrl(page)}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-                    page === currentPage
-                      ? "bg-blue-600 text-white"
-                      : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  {page}
-                </a>
-              );
-            })}
-
-            {currentPage < totalPages && (
-              <a
-                href={buildPageUrl(currentPage + 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              >
-                다음
-                <ChevronRight className="h-3.5 w-3.5" />
-              </a>
-            )}
+        {/* Query chip */}
+        {q && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              background: FOUNDRY.glow,
+              border: `1px solid ${FOUNDRY.primary}`,
+              borderRadius: 4,
+              padding: "3px 8px",
+              fontSize: 11,
+              color: FOUNDRY.primary,
+            }}
+          >
+            <span>&ldquo;{q}&rdquo;</span>
+            <button
+              type="button"
+              onClick={() => updateParam("q", "")}
+              style={{ background: "none", border: "none", cursor: "pointer", color: FOUNDRY.primary, padding: 0, lineHeight: 1 }}
+            >
+              <X size={10} />
+            </button>
           </div>
         )}
       </div>
+
+      {/* ── Dense Data Table ── */}
+      <div
+        style={{
+          background: "transparent",
+          border: `1px solid ${FOUNDRY.border}`,
+          borderRadius: 6,
+          overflow: "hidden",
+        }}
+      >
+        {/* Table header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 16px",
+            background: FOUNDRY.card,
+            borderBottom: `1px solid ${FOUNDRY.border}`,
+            gap: 0,
+          }}
+        >
+          <div style={{ ...HEADER_TEXT, width: COL.dday, flexShrink: 0 }}>D-DAY</div>
+          <div style={{ ...HEADER_TEXT, flex: "1 1 0%" }}>제목</div>
+          <div style={{ ...HEADER_TEXT, width: COL.org, flexShrink: 0 }}>기관</div>
+          <div style={{ ...HEADER_TEXT, width: COL.category, flexShrink: 0 }}>카테고리</div>
+          <div style={{ ...HEADER_TEXT, width: COL.amount, flexShrink: 0 }}>최대금액</div>
+          <div style={{ ...HEADER_TEXT, width: COL.status, flexShrink: 0 }}>상태</div>
+        </div>
+
+        {/* Loading skeleton */}
+        {loading && (
+          <div>
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "10px 16px",
+                  borderBottom: `1px solid ${FOUNDRY.border}`,
+                  gap: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: COL.dday - 16,
+                    height: 14,
+                    flexShrink: 0,
+                    marginRight: 16,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+                <div
+                  style={{
+                    flex: "1 1 0%",
+                    height: 14,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+                <div
+                  style={{
+                    width: COL.org - 16,
+                    height: 14,
+                    flexShrink: 0,
+                    marginLeft: 16,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+                <div
+                  style={{
+                    width: COL.category - 16,
+                    height: 14,
+                    flexShrink: 0,
+                    marginLeft: 16,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+                <div
+                  style={{
+                    width: COL.amount - 16,
+                    height: 14,
+                    flexShrink: 0,
+                    marginLeft: 16,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+                <div
+                  style={{
+                    width: COL.status - 8,
+                    height: 14,
+                    flexShrink: 0,
+                    marginLeft: 8,
+                    borderRadius: 3,
+                    background: "rgba(255,255,255,0.06)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && grants.length === 0 && (
+          <div
+            style={{
+              padding: "60px 20px",
+              textAlign: "center",
+              color: FOUNDRY.muted,
+            }}
+          >
+            <p style={{ fontSize: 14 }}>검색 결과가 없습니다</p>
+            <p style={{ fontSize: 12, marginTop: 6 }}>다른 검색어나 필터를 시도해보세요</p>
+          </div>
+        )}
+
+        {/* Data rows */}
+        {!loading && grants.length > 0 && (
+          <div>
+            {grants.map((grant) => {
+              const dday = getDDay(grant.end_date);
+              const ddayText = formatDDay(grant.end_date);
+              const ddayColor = getDDayColor(dday);
+              const isClosed = dday !== null && dday > 0;
+
+              return (
+                <Link
+                  key={grant.id}
+                  href={`/grants/${grant.id}`}
+                  style={{
+                    ...ROW_STYLE,
+                    opacity: isClosed ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background =
+                      "rgba(255,255,255,0.03)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background =
+                      "transparent";
+                  }}
+                >
+                  {/* D-DAY */}
+                  <div
+                    style={{
+                      width: COL.dday,
+                      flexShrink: 0,
+                      fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: ddayColor,
+                    }}
+                  >
+                    {ddayText}
+                  </div>
+
+                  {/* 제목 */}
+                  <div
+                    style={{
+                      flex: "1 1 0%",
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: 13,
+                      color: FOUNDRY.text,
+                    }}
+                  >
+                    {grant.title}
+                  </div>
+
+                  {/* 기관 */}
+                  <div
+                    style={{
+                      width: COL.org,
+                      flexShrink: 0,
+                      paddingLeft: 12,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: 11,
+                      color: FOUNDRY.muted,
+                    }}
+                  >
+                    {grant.organization || "—"}
+                  </div>
+
+                  {/* 카테고리 */}
+                  <div
+                    style={{
+                      width: COL.category,
+                      flexShrink: 0,
+                      paddingLeft: 12,
+                    }}
+                  >
+                    {grant.category ? (
+                      <span
+                        style={{
+                          background: FOUNDRY.border,
+                          color: FOUNDRY.muted,
+                          borderRadius: 3,
+                          padding: "2px 6px",
+                          fontSize: 10,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {grant.category}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: FOUNDRY.muted }}>—</span>
+                    )}
+                  </div>
+
+                  {/* 최대금액 */}
+                  <div
+                    style={{
+                      width: COL.amount,
+                      flexShrink: 0,
+                      paddingLeft: 12,
+                      fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                      fontSize: 12,
+                      color: grant.amount_max ? FOUNDRY.text : FOUNDRY.muted,
+                    }}
+                  >
+                    {formatAmountShort(grant.amount_max)}
+                  </div>
+
+                  {/* 상태 */}
+                  <div
+                    style={{
+                      width: COL.status,
+                      flexShrink: 0,
+                      paddingLeft: 8,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color:
+                        grant.status === "접수중"
+                          ? FOUNDRY.success
+                          : grant.status === "진행중"
+                          ? FOUNDRY.primary
+                          : FOUNDRY.muted,
+                    }}
+                  >
+                    {grant.status === "접수중" ? (
+                      <>● LIVE</>
+                    ) : grant.status === "마감" ? (
+                      <>● 마감</>
+                    ) : grant.status ? (
+                      grant.status
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 4,
+            marginTop: 20,
+          }}
+        >
+          {currentPage > 1 && (
+            <a
+              href={buildPageUrl(currentPage - 1)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "5px 10px",
+                background: "transparent",
+                border: `1px solid ${FOUNDRY.border}`,
+                borderRadius: 4,
+                fontSize: 11,
+                color: FOUNDRY.muted,
+                textDecoration: "none",
+              }}
+            >
+              <ChevronLeft size={12} />
+              이전
+            </a>
+          )}
+
+          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+            let page: number;
+            if (totalPages <= 7) {
+              page = i + 1;
+            } else if (currentPage <= 4) {
+              page = i + 1;
+            } else if (currentPage >= totalPages - 3) {
+              page = totalPages - 6 + i;
+            } else {
+              page = currentPage - 3 + i;
+            }
+            const isCurrent = page === currentPage;
+            return (
+              <a
+                key={page}
+                href={buildPageUrl(page)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  background: isCurrent ? FOUNDRY.primary : "transparent",
+                  border: `1px solid ${isCurrent ? FOUNDRY.primary : FOUNDRY.border}`,
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: isCurrent ? 600 : 400,
+                  color: isCurrent ? "#fff" : FOUNDRY.muted,
+                  textDecoration: "none",
+                }}
+              >
+                {page}
+              </a>
+            );
+          })}
+
+          {currentPage < totalPages && (
+            <a
+              href={buildPageUrl(currentPage + 1)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "5px 10px",
+                background: "transparent",
+                border: `1px solid ${FOUNDRY.border}`,
+                borderRadius: 4,
+                fontSize: 11,
+                color: FOUNDRY.muted,
+                textDecoration: "none",
+              }}
+            >
+              다음
+              <ChevronRight size={12} />
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -712,8 +874,26 @@ export default function GrantListPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            background: FOUNDRY.bg,
+          }}
+        >
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              border: `2px solid ${FOUNDRY.primary}`,
+              borderTopColor: "transparent",
+              animation: "spin 0.7s linear infinite",
+            }}
+          />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       }
     >
