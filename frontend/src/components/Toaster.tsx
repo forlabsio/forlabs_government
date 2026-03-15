@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { CheckCircle, AlertTriangle, Info, X } from "lucide-react";
 import { FOUNDRY } from "@/lib/theme";
 
@@ -12,6 +12,8 @@ interface Toast {
   sub?: string;
   type: ToastType;
 }
+
+const MAX_TOASTS = 5;
 
 // Global singleton for imperative usage
 let _addToast: ((t: Omit<Toast, "id">) => void) | null = null;
@@ -32,13 +34,23 @@ const TYPE_CONFIG: Record<ToastType, { icon: React.ComponentType<{ size?: number
 
 export default function Toaster() {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const addToast = useCallback((t: Omit<Toast, "id">) => {
     const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { ...t, id }]);
-    setTimeout(() => {
+    setToasts((prev) => {
+      const capped = prev.length >= MAX_TOASTS ? prev.slice(1) : prev;
+      return [...capped, { ...t, id }];
+    });
+    const timer = setTimeout(() => {
       setToasts((prev) => prev.filter((x) => x.id !== id));
+      timersRef.current.delete(timer);
     }, 3000);
+    timersRef.current.add(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => { timersRef.current.forEach(clearTimeout); };
   }, []);
 
   useEffect(() => {
@@ -113,7 +125,7 @@ export default function Toaster() {
                   flexShrink: 0,
                 }}
               >
-                <X size={13} />
+                <X size={13} aria-hidden="true" />
               </button>
             </div>
           );
