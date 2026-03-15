@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -293,6 +293,7 @@ function Sidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={active ? "page" : undefined}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -377,6 +378,16 @@ function UserDropdown() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [open]);
+
   if (loading) {
     return (
       <div
@@ -416,6 +427,9 @@ function UserDropdown() {
     <div ref={dropdownRef} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-label={`User menu for ${user.email}`}
+        aria-expanded={open}
+        aria-haspopup="menu"
         style={{
           width: 28,
           height: 28,
@@ -472,9 +486,9 @@ function UserDropdown() {
             }}
           />
           <button
-            onClick={() => {
+            onClick={async () => {
               setOpen(false);
-              signOut();
+              await signOut();
               router.push("/login");
             }}
             style={{
@@ -637,6 +651,7 @@ function WorkspaceBar() {
             alignItems: "center",
           }}
           title="알림"
+          aria-label="알림"
         >
           <Bell size={15} />
         </button>
@@ -670,6 +685,9 @@ function CommandPaletteTrigger() {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
+  const handleSidebarEnter = useCallback(() => setSidebarExpanded(true), []);
+  const handleSidebarLeave = useCallback(() => setSidebarExpanded(false), []);
+
   return (
     <div
       style={{
@@ -690,8 +708,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Sidebar
           expanded={sidebarExpanded}
-          onMouseEnter={() => setSidebarExpanded(true)}
-          onMouseLeave={() => setSidebarExpanded(false)}
+          onMouseEnter={handleSidebarEnter}
+          onMouseLeave={handleSidebarLeave}
         />
 
         <main
