@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { FOUNDRY } from "@/lib/theme";
 import { useAuth } from "@/components/AuthProvider";
+import CommandPalette from "@/components/CommandPalette";
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
@@ -724,6 +725,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <CommandPaletteTrigger />
+      <CommandPalette />
     </div>
   );
 }
