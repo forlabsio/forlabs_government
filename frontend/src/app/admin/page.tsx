@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchDashboard } from "@/lib/api";
+import { fetchDashboard, triggerCollect } from "@/lib/api";
+
+async function syncGraph(token: string) {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const res = await fetch(`${API_URL}/api/admin/sync-graph`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to sync graph");
+  return res.json();
+}
 import { FOUNDRY } from "@/lib/theme";
 import {
   Briefcase,
@@ -109,6 +119,9 @@ export default function AdminDashboardPage() {
     fetch_logs_today: [],
   });
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ grants_synced: number; companies_synced: number; eligibility_edges: number } | null>(null);
+  const [collecting, setCollecting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -127,13 +140,107 @@ export default function AdminDashboardPage() {
     load();
   }, []);
 
+  async function handleSyncGraph() {
+    const token = localStorage.getItem("govgrants_token");
+    if (!token) return;
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await syncGraph(token);
+      setSyncResult(result);
+    } catch {
+      alert("Neo4j 동기화 실패");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function handleCollect() {
+    const token = localStorage.getItem("govgrants_token");
+    if (!token) return;
+    setCollecting(true);
+    try {
+      await triggerCollect(token);
+      alert("수집 트리거 완료");
+    } catch {
+      alert("수집 트리거 실패");
+    } finally {
+      setCollecting(false);
+    }
+  }
+
   return (
     <div style={{ padding: "28px 28px 48px" }}>
       {/* Page Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: FOUNDRY.text }}>대시보드</h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: FOUNDRY.muted }}>서비스 현황을 한눈에 확인하세요</p>
+      <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: FOUNDRY.text }}>대시보드</h1>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: FOUNDRY.muted }}>서비스 현황을 한눈에 확인하세요</p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={handleCollect}
+            disabled={collecting}
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: `1px solid ${FOUNDRY.border}`,
+              color: FOUNDRY.text,
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 13,
+              cursor: collecting ? "not-allowed" : "pointer",
+              opacity: collecting ? 0.6 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <RefreshCw size={13} />
+            {collecting ? "수집 중..." : "과제 수집"}
+          </button>
+          <button
+            onClick={handleSyncGraph}
+            disabled={syncing}
+            style={{
+              background: syncing ? "rgba(22,119,255,0.15)" : FOUNDRY.primary,
+              border: "none",
+              color: "#fff",
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 13,
+              cursor: syncing ? "not-allowed" : "pointer",
+              opacity: syncing ? 0.7 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontWeight: 600,
+            }}
+          >
+            <RefreshCw size={13} style={{ animation: syncing ? "spin 1s linear infinite" : "none" }} />
+            {syncing ? "동기화 중..." : "Neo4j 동기화"}
+          </button>
+        </div>
       </div>
+      {syncResult && (
+        <div style={{
+          marginBottom: 20,
+          borderRadius: 8,
+          border: `1px solid rgba(35,162,109,0.3)`,
+          background: "rgba(35,162,109,0.08)",
+          padding: "12px 18px",
+          display: "flex",
+          gap: 24,
+          alignItems: "center",
+          fontSize: 13,
+          color: FOUNDRY.text,
+        }}>
+          <CheckCircle2 size={16} color={FOUNDRY.success} />
+          <span>Neo4j 동기화 완료 —</span>
+          <span>과제 <strong style={{ color: FOUNDRY.success }}>{syncResult.grants_synced}</strong>건</span>
+          <span>기업 <strong style={{ color: FOUNDRY.primary }}>{syncResult.companies_synced}</strong>개</span>
+          <span>적격성 엣지 <strong style={{ color: "#8b5cf6" }}>{syncResult.eligibility_edges}</strong>개</span>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div
