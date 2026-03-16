@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { fetchGrantDetail, fetchGrants, type Grant } from "@/lib/api";
+import { fetchGrantDetail, fetchGrants, fetchBookmarks, addBookmark, removeBookmark, type Grant } from "@/lib/api";
 import { formatDDay, getDDay } from "@/lib/format";
 import GrantCard from "@/components/GrantCard";
 import { FOUNDRY, SOURCE_LABELS } from "@/lib/theme";
@@ -41,6 +41,8 @@ export default function GrantDetailPage({
   const [relatedGrants, setRelatedGrants] = useState<Grant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +70,37 @@ export default function GrantDetailPage({
     load();
     return () => { cancelled = true; };
   }, [id]);
+
+  // Load bookmark status when user is available
+  useEffect(() => {
+    if (!user) return;
+    const token = localStorage.getItem("govgrants_token");
+    if (!token) return;
+    fetchBookmarks(token)
+      .then((bms) => {
+        setIsBookmarked(bms.some((b: any) => b.id === id || b.grant_id === id));
+      })
+      .catch(() => {});
+  }, [user, id]);
+
+  async function handleToggleBookmark() {
+    const token = localStorage.getItem("govgrants_token");
+    if (!token || bookmarkLoading) return;
+    setBookmarkLoading(true);
+    try {
+      if (isBookmarked) {
+        await removeBookmark(token, id);
+        setIsBookmarked(false);
+      } else {
+        await addBookmark(token, id);
+        setIsBookmarked(true);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBookmarkLoading(false);
+    }
+  }
 
   const pageStyle: CSSProperties = {
     height: "calc(100vh - 40px)",
@@ -318,31 +351,26 @@ export default function GrantDetailPage({
             {user && (
               <button
                 type="button"
+                onClick={handleToggleBookmark}
+                disabled={bookmarkLoading}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 7,
-                  background: "transparent",
-                  border: `1px solid ${FOUNDRY.border}`,
-                  color: FOUNDRY.muted,
+                  background: isBookmarked ? FOUNDRY.glow : "transparent",
+                  border: `1px solid ${isBookmarked ? FOUNDRY.primary : FOUNDRY.border}`,
+                  color: isBookmarked ? FOUNDRY.primary : FOUNDRY.muted,
                   borderRadius: 8,
                   padding: "10px 20px",
                   fontSize: 13,
                   fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = FOUNDRY.primary;
-                  (e.currentTarget as HTMLElement).style.color = FOUNDRY.primary;
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = FOUNDRY.border;
-                  (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                  cursor: bookmarkLoading ? "not-allowed" : "pointer",
+                  opacity: bookmarkLoading ? 0.6 : 1,
+                  transition: "border-color 0.15s, color 0.15s, background 0.15s",
                 }}
               >
-                <Bookmark size={14} />
-                관심 사업
+                <Bookmark size={14} fill={isBookmarked ? FOUNDRY.primary : "none"} />
+                {isBookmarked ? "관심 사업 저장됨" : "관심 사업"}
               </button>
             )}
           </div>
