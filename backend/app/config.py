@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     supabase_key: str = ""
     supabase_service_key: str = ""
     openai_api_key: str = ""
+    anthropic_api_key: str = ""
     voyage_api_key: str = ""
     resend_api_key: str = ""
     admin_email: str = ""

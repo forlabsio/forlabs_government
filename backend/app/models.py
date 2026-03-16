@@ -65,6 +65,9 @@ class GrantProject(Base):
     target_industry = mapped_column(ARRAY(String), default=list)
     target_region = mapped_column(ARRAY(String), default=list)
     target_age: Mapped[str | None] = mapped_column(String)
+    parsed_requirements: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True, default=None
+    )
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str | None] = mapped_column(String, default="접수중")
