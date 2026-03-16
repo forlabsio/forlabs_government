@@ -43,7 +43,9 @@ class User(Base):
     company_age: Mapped[int | None] = mapped_column(Integer)
     region: Mapped[str | None] = mapped_column(String)
     employee_count: Mapped[int | None] = mapped_column(Integer)
-    revenue_range: Mapped[str | None] = mapped_column(String)
+    revenue_range: Mapped[str | None] = mapped_column(String)  # deprecated — kept for migration
+    revenue_krw: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    certifications = mapped_column(ARRAY(String), default=list, server_default="{}")
     is_corporate: Mapped[bool] = mapped_column(Boolean, default=False)
     is_venture: Mapped[bool] = mapped_column(Boolean, default=False)
     email_opt_in: Mapped[bool] = mapped_column(Boolean, default=True)

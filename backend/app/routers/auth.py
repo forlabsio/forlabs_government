@@ -134,6 +134,8 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
         region=body.region,
         employee_count=body.employee_count,
         revenue_range=body.revenue_range,
+        revenue_krw=body.revenue_krw,
+        certifications=body.certifications,
         email_opt_in=body.email_opt_in,
     )
     db.add(user)
@@ -198,6 +200,8 @@ async def update_me(
     user.region = body.region
     user.employee_count = body.employee_count
     user.revenue_range = body.revenue_range
+    user.revenue_krw = body.revenue_krw
+    user.certifications = body.certifications
     user.is_corporate = body.is_corporate
     user.is_venture = body.is_venture
     user.email_opt_in = body.email_opt_in

@@ -40,32 +40,16 @@ const INDUSTRIES = [
 ];
 
 const REGIONS = [
-  "서울",
-  "경기",
-  "인천",
-  "부산",
-  "대구",
-  "광주",
-  "대전",
-  "울산",
-  "세종",
-  "강원",
-  "충북",
-  "충남",
-  "전북",
-  "전남",
-  "경북",
-  "경남",
-  "제주",
+  "서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산",
+  "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
 ];
 
-const REVENUE_RANGES = [
-  "1억 미만",
-  "1억~5억",
-  "5억~10억",
-  "10억~50억",
-  "50억~100억",
-  "100억 이상",
+const CERTIFICATIONS = [
+  { value: "이노비즈", label: "이노비즈", desc: "기술혁신형 중소기업" },
+  { value: "메인비즈", label: "메인비즈", desc: "경영혁신형 중소기업" },
+  { value: "여성기업", label: "여성기업", desc: "여성이 경영하는 기업" },
+  { value: "사회적기업", label: "사회적기업", desc: "사회적 목적 기업" },
+  { value: "장애인기업", label: "장애인기업", desc: "장애인 대표 기업" },
 ];
 
 interface CompanyProfile {
@@ -74,7 +58,8 @@ interface CompanyProfile {
   yearsInBusiness: string;
   region: string;
   employeeCount: string;
-  revenueRange: string;
+  revenueManwon: string;      // 매출액 (만원 단위 입력)
+  certifications: string[];
   isCorporate: boolean;
   isVenture: boolean;
   emailNotification: boolean;
@@ -162,7 +147,7 @@ const PROFILE_FIELDS: Array<{ key: keyof CompanyProfile; label: string }> = [
   { key: "yearsInBusiness", label: "업력" },
   { key: "region",          label: "소재지" },
   { key: "employeeCount",   label: "직원수" },
-  { key: "revenueRange",    label: "매출 구간" },
+  { key: "revenueManwon",   label: "매출액" },
   { key: "isCorporate",     label: "법인 여부" },
 ];
 
@@ -177,6 +162,13 @@ function getCompleteness(profile: CompanyProfile): { pct: number; missing: strin
   return { pct: Math.round(filled / PROFILE_FIELDS.length * 100), missing };
 }
 
+function formatRevenue(manwon: string): string {
+  const n = parseInt(manwon);
+  if (!n || isNaN(n)) return "";
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}억원`;
+  return `${n.toLocaleString()}만원`;
+}
+
 export default function MyPage() {
   const { user, signOut } = useAuth();
   const [saved, setSaved] = useState(false);
@@ -187,13 +179,13 @@ export default function MyPage() {
     yearsInBusiness: "",
     region: "",
     employeeCount: "",
-    revenueRange: "",
+    revenueManwon: "",
+    certifications: [],
     isCorporate: false,
     isVenture: false,
     emailNotification: true,
   });
 
-  // Load profile from server (fallback to localStorage)
   useEffect(() => {
     async function loadProfile() {
       const token = localStorage.getItem("govgrants_token");
@@ -207,7 +199,9 @@ export default function MyPage() {
             yearsInBusiness: me.company_age ? String(me.company_age) : "",
             region: me.region || "",
             employeeCount: me.employee_count ? String(me.employee_count) : "",
-            revenueRange: me.revenue_range || "",
+            // revenue_krw (원) → 만원 단위로 변환
+            revenueManwon: me.revenue_krw ? String(Math.round(me.revenue_krw / 10000)) : "",
+            certifications: me.certifications || [],
             isCorporate: me.is_corporate ?? false,
             isVenture: me.is_venture ?? false,
             emailNotification: me.email_opt_in ?? true,
@@ -246,7 +240,9 @@ export default function MyPage() {
           company_age: profile.yearsInBusiness ? parseInt(profile.yearsInBusiness) : undefined,
           region: profile.region || undefined,
           employee_count: profile.employeeCount ? parseInt(profile.employeeCount) : undefined,
-          revenue_range: profile.revenueRange || undefined,
+          // 만원 → 원 변환
+          revenue_krw: profile.revenueManwon ? parseInt(profile.revenueManwon) * 10000 : undefined,
+          certifications: profile.certifications,
           is_corporate: profile.isCorporate,
           is_venture: profile.isVenture,
           email_opt_in: profile.emailNotification,
@@ -265,6 +261,15 @@ export default function MyPage() {
     value: CompanyProfile[K]
   ) {
     setProfile((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleCert(cert: string) {
+    setProfile(prev => ({
+      ...prev,
+      certifications: prev.certifications.includes(cert)
+        ? prev.certifications.filter(c => c !== cert)
+        : [...prev.certifications, cert],
+    }));
   }
 
   return (
@@ -367,11 +372,12 @@ export default function MyPage() {
                 </FoundrySelect>
               </div>
               <div>
-                <label style={labelStyle}>업력</label>
+                <label style={labelStyle}>업력 (년)</label>
                 <FoundryInput
+                  type="number"
                   value={profile.yearsInBusiness}
                   onChange={(e) => updateField("yearsInBusiness", e.target.value)}
-                  placeholder="예: 3년"
+                  placeholder="예: 3"
                 />
               </div>
             </div>
@@ -391,27 +397,43 @@ export default function MyPage() {
                 </FoundrySelect>
               </div>
               <div>
-                <label style={labelStyle}>직원수</label>
+                <label style={labelStyle}>직원수 (명)</label>
                 <FoundryInput
+                  type="number"
                   value={profile.employeeCount}
                   onChange={(e) => updateField("employeeCount", e.target.value)}
-                  placeholder="예: 15명"
+                  placeholder="예: 15"
                 />
               </div>
             </div>
 
-            {/* Revenue Range */}
+            {/* Revenue — 숫자 직접 입력 */}
             <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>매출 구간</label>
-              <FoundrySelect
-                value={profile.revenueRange}
-                onChange={(e) => updateField("revenueRange", e.target.value)}
-              >
-                <option value="">선택하세요</option>
-                {REVENUE_RANGES.map((rev) => (
-                  <option key={rev} value={rev}>{rev}</option>
-                ))}
-              </FoundrySelect>
+              <label style={labelStyle}>매출액 (만원 단위)</label>
+              <div style={{ position: "relative" }}>
+                <FoundryInput
+                  type="number"
+                  value={profile.revenueManwon}
+                  onChange={(e) => updateField("revenueManwon", e.target.value)}
+                  placeholder="예: 50000 (5억원)"
+                />
+                {profile.revenueManwon && (
+                  <span style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    fontSize: 11,
+                    color: F.primary,
+                    pointerEvents: "none",
+                  }}>
+                    = {formatRevenue(profile.revenueManwon)}
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: 10, color: F.muted, margin: "4px 0 0 0" }}>
+                1억원 = 10,000만원 / 10억원 = 100,000만원
+              </p>
             </div>
 
             {/* Corporate / Venture flags — 2-column */}
@@ -462,6 +484,57 @@ export default function MyPage() {
                   </div>
                 </button>
               ))}
+            </div>
+
+            {/* Certifications multi-select */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ ...labelStyle, marginBottom: 8 }}>보유 인증</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                {CERTIFICATIONS.map(({ value, label, desc }) => {
+                  const checked = profile.certifications.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => toggleCert(value)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        background: checked ? "rgba(45,114,210,0.12)" : F.card,
+                        border: `1px solid ${checked ? F.primary : F.border}`,
+                        borderRadius: 6,
+                        padding: "8px 10px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <div style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 3,
+                        border: `1.5px solid ${checked ? F.primary : F.border}`,
+                        background: checked ? F.primary : "transparent",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}>
+                        {checked && (
+                          <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: checked ? F.primary : F.text, margin: 0 }}>{label}</p>
+                        <p style={{ fontSize: 10, color: F.muted, margin: 0 }}>{desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Email Notification Toggle */}

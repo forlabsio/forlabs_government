@@ -405,6 +405,8 @@ async def auto_match(
         "region": body.region if body.region else None,
         "employee_count": body.employee_count,
         "revenue_range": body.revenue_range,
+        "revenue_krw": body.revenue_krw,
+        "certifications": body.certifications,
         "is_corporate": body.is_corporate,
         "is_venture": body.is_venture,
     }

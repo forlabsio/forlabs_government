@@ -17,7 +17,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 MIN_SUMMARY_LEN = 30
-CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+CLAUDE_MODEL = "claude-3-haiku-20240307"
 
 SYSTEM_PROMPT = """You are a structured data extractor for Korean government grant announcements.
 Extract eligibility requirements from the provided Korean text and return ONLY a JSON object.
@@ -72,7 +72,7 @@ async def parse_requirements(summary: str) -> dict | None:
     try:
         message = await client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=512,
+            max_tokens=800,
             system=SYSTEM_PROMPT,
             messages=[
                 {

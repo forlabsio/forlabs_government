@@ -161,7 +161,9 @@ export interface UserProfile {
   company_age?: number;
   region?: string;
   employee_count?: number;
-  revenue_range?: string;
+  revenue_range?: string;  // deprecated
+  revenue_krw?: number;
+  certifications?: string[];
   is_corporate?: boolean;
   is_venture?: boolean;
   email_opt_in?: boolean;
@@ -177,7 +179,9 @@ export interface UserInfo {
   company_age?: number;
   region?: string;
   employee_count?: number;
-  revenue_range?: string;
+  revenue_range?: string;  // deprecated
+  revenue_krw?: number;
+  certifications: string[];
   is_corporate: boolean;
   is_venture: boolean;
   email_opt_in: boolean;
@@ -461,7 +465,9 @@ export async function fetchMatchResult(profile: {
   region: string;
   employee_count?: number;
   company_age?: number;
-  revenue_range?: string;
+  revenue_range?: string;  // deprecated
+  revenue_krw?: number;
+  certifications?: string[];
   is_corporate?: boolean;
   is_venture?: boolean;
 }): Promise<MatchResult> {

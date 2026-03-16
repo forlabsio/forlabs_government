@@ -278,7 +278,14 @@ async def sync_graph_endpoint(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
-    """Sync grants from PostgreSQL to Neo4j Knowledge Graph."""
-    from app.sync_graph import sync_all_grants
-    count = await sync_all_grants(db)
-    return {"synced": count}
+    """Sync grants + companies + eligibility edges to Neo4j."""
+    from app.sync_graph import sync_all_companies, sync_all_eligibility, sync_all_grants
+
+    grants_synced = await sync_all_grants(db)
+    companies_synced = await sync_all_companies(db)
+    eligibility_edges = await sync_all_eligibility(db)
+    return {
+        "grants_synced": grants_synced,
+        "companies_synced": companies_synced,
+        "eligibility_edges": eligibility_edges,
+    }

@@ -58,7 +58,9 @@ class UserProfile(BaseModel):
     company_age: int | None = None
     region: str | None = None
     employee_count: int | None = None
-    revenue_range: str | None = None
+    revenue_range: str | None = None  # deprecated
+    revenue_krw: int | None = None
+    certifications: list[str] = []
     is_corporate: bool = False
     is_venture: bool = False
     email_opt_in: bool = True
@@ -76,7 +78,9 @@ class UserResponse(BaseModel):
     company_age: int | None = None
     region: str | None = None
     employee_count: int | None = None
-    revenue_range: str | None = None
+    revenue_range: str | None = None  # deprecated
+    revenue_krw: int | None = None
+    certifications: list[str] = []
     is_corporate: bool = False
     is_venture: bool = False
     email_opt_in: bool = True
@@ -117,7 +121,9 @@ class SignupRequest(BaseModel):
     company_age: int | None = None
     region: str | None = None
     employee_count: int | None = None
-    revenue_range: str | None = None
+    revenue_range: str | None = None  # deprecated
+    revenue_krw: int | None = None
+    certifications: list[str] = []
     email_opt_in: bool = True
     verification_code: str
 
@@ -240,7 +246,9 @@ class MatchRequest(BaseModel):
     region: str = ""
     employee_count: int | None = None
     company_age: int | None = None
-    revenue_range: str | None = None
+    revenue_range: str | None = None  # deprecated
+    revenue_krw: int | None = None
+    certifications: list[str] = []
     is_corporate: bool | None = None
     is_venture: bool | None = None
 

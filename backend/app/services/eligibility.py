@@ -69,7 +69,7 @@ def compute_eligibility(
     Compare user profile against parsed grant requirements.
 
     profile keys: company_age (int), industry (str), region (str),
-                  employee_count (int), revenue_range (str)
+                  employee_count (int), revenue_krw (int), certifications (list[str])
     """
     checklist: list[CheckItem] = []
 
@@ -163,20 +163,25 @@ def compute_eligibility(
                 message="직원수 미입력 → 직접 확인 필요",
             ))
 
-    # 5. Revenue check
-    user_rev_range = profile.get("revenue_range")
+    # 5. Revenue check (max)
+    user_rev_krw = profile.get("revenue_krw")
+    # fallback: revenue_range string → upper bound
+    if user_rev_krw is None:
+        user_rev_range = profile.get("revenue_range")
+        if user_rev_range and user_rev_range in REVENUE_UPPER_BOUNDS:
+            user_rev_krw = REVENUE_UPPER_BOUNDS[user_rev_range]
     max_rev = parsed_requirements.get("max_revenue_krw")
 
+    def _fmt_krw(v: int) -> str:
+        return f"{v // 100_000_000}억" if v >= 100_000_000 else f"{v // 10_000}만"
+
     if max_rev is not None:
-        if user_rev_range and user_rev_range in REVENUE_UPPER_BOUNDS:
-            user_upper = REVENUE_UPPER_BOUNDS[user_rev_range]
-            rev_ok = user_upper <= max_rev
-            def fmt(v: int) -> str:
-                return f"{v // 100_000_000}억" if v >= 100_000_000 else f"{v // 10_000}만"
+        if user_rev_krw is not None:
+            rev_ok = user_rev_krw <= max_rev
             checklist.append(CheckItem(
                 field="revenue",
                 status="pass" if rev_ok else "fail",
-                message=f"매출 상한 {fmt(user_upper)} {'≤' if rev_ok else '>'} 요건 {fmt(max_rev)}",
+                message=f"매출 {_fmt_krw(user_rev_krw)} {'≤' if rev_ok else '>'} 요건 {_fmt_krw(max_rev)}",
             ))
         else:
             checklist.append(CheckItem(
@@ -246,30 +251,15 @@ def compute_eligibility(
             ))
 
     # 9. Minimum revenue check
-    user_rev_range2 = profile.get("revenue_range")
     min_rev = parsed_requirements.get("min_revenue_krw")
 
     if min_rev is not None:
-        if user_rev_range2 and user_rev_range2 in REVENUE_UPPER_BOUNDS:
-            user_upper2 = REVENUE_UPPER_BOUNDS[user_rev_range2]
-            def fmt2(v: int) -> str:
-                return f"{v // 100_000_000}억" if v >= 100_000_000 else f"{v // 10_000}만"
-            # Conservative: pass only if user's LOWER bound exceeds min_rev
-            # Use half of upper bound as a rough lower estimate (except 1억 미만 → 0)
-            rev_lower_estimates = {
-                "1억 미만": 0,
-                "1억~5억": 100_000_000,
-                "5억~10억": 500_000_000,
-                "10억~50억": 1_000_000_000,
-                "50억~100억": 5_000_000_000,
-                "100억 이상": 10_000_000_000,
-            }
-            user_lower = rev_lower_estimates.get(user_rev_range2, 0)
-            min_rev_ok = user_lower >= min_rev
+        if user_rev_krw is not None:
+            min_rev_ok = user_rev_krw >= min_rev
             checklist.append(CheckItem(
                 field="min_revenue",
                 status="pass" if min_rev_ok else "fail",
-                message=f"매출 하한 {fmt2(user_lower)} {'≥' if min_rev_ok else '<'} 최소 요건 {fmt2(min_rev)}",
+                message=f"매출 {_fmt_krw(user_rev_krw)} {'≥' if min_rev_ok else '<'} 최소 요건 {_fmt_krw(min_rev)}",
             ))
         else:
             checklist.append(CheckItem(
@@ -326,7 +316,29 @@ def compute_eligibility(
                 message="벤처기업 인증 여부 미입력 → 직접 확인 필요",
             ))
 
-    # 12. Unextracted conditions (always unknown — flag for manual review)
+    # 12. Certifications check (이노비즈, 메인비즈, 여성기업 등)
+    CERT_KEYWORDS = {
+        "이노비즈": "이노비즈",
+        "메인비즈": "메인비즈",
+        "여성기업": "여성기업",
+        "사회적기업": "사회적기업",
+        "장애인기업": "장애인기업",
+        "벤처": "벤처기업",
+    }
+    user_certs: list[str] = profile.get("certifications") or []
+    unextracted_for_cert = parsed_requirements.get("unextracted_conditions") or []
+    for condition in unextracted_for_cert:
+        for keyword, cert_name in CERT_KEYWORDS.items():
+            if keyword in condition and "필수" in condition:
+                has_cert = any(keyword in c for c in user_certs)
+                checklist.append(CheckItem(
+                    field="certification",
+                    status="pass" if has_cert else "fail" if user_certs else "unknown",
+                    message=f"{cert_name} 인증 {'보유 ✓' if has_cert else '필요 (미보유)' if user_certs else '→ 직접 확인 필요'}",
+                ))
+                break
+
+    # 13. Unextracted conditions (always unknown — flag for manual review)
     unextracted = parsed_requirements.get("unextracted_conditions") or []
     for condition in unextracted[:3]:  # cap at 3 to avoid bloat
         checklist.append(CheckItem(

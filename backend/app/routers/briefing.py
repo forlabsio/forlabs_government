@@ -32,6 +32,8 @@ def _build_profile_dict(user: User) -> dict:
         "region": user.region,
         "employee_count": user.employee_count,
         "revenue_range": user.revenue_range,
+        "revenue_krw": getattr(user, "revenue_krw", None),
+        "certifications": getattr(user, "certifications", []) or [],
         "is_corporate": getattr(user, "is_corporate", False),
         "is_venture": getattr(user, "is_venture", False),
     }
@@ -62,8 +64,8 @@ def _missing_fields(user: User) -> list[str]:
         missing.append("소재지")
     if user.employee_count is None:
         missing.append("직원수")
-    if not user.revenue_range:
-        missing.append("매출 구간")
+    if not user.revenue_krw and not user.revenue_range:
+        missing.append("매출액")
     return missing
 
 
