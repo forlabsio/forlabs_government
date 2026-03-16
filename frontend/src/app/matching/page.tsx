@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { fetchMatchResult, type MatchResult } from "@/lib/api";
@@ -73,6 +73,29 @@ export default function MatchingPage() {
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MatchResult | null>(null);
+  const [missingProfileFields, setMissingProfileFields] = useState<string[]>([]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("govgrants_profile");
+    if (stored) {
+      try {
+        const p = JSON.parse(stored);
+        setForm(prev => ({
+          ...prev,
+          industry: p.industry || prev.industry,
+          region: p.region || prev.region,
+          employee_count: p.employeeCount ? String(p.employeeCount) : prev.employee_count,
+          company_age: p.yearsInBusiness ? String(p.yearsInBusiness) : prev.company_age,
+        }));
+        const missing: string[] = [];
+        if (!p.industry) missing.push("업종");
+        if (!p.yearsInBusiness) missing.push("업력");
+        if (!p.region) missing.push("소재지");
+        if (!p.employeeCount) missing.push("직원수");
+        setMissingProfileFields(missing);
+      } catch {}
+    }
+  }, []);
 
   async function handleMatch() {
     if (!form.industry) return;
@@ -84,7 +107,17 @@ export default function MatchingPage() {
         employee_count: form.employee_count ? Number(form.employee_count) : undefined,
         company_age: form.company_age ? Number(form.company_age) : undefined,
       });
-      setResult(res);
+      // Sort by eligibility_score descending before setting state
+      const sorted = {
+        ...res,
+        matched_grants: [...res.matched_grants].sort((a, b) => {
+          if (a.eligibility_score == null && b.eligibility_score == null) return 0;
+          if (a.eligibility_score == null) return 1;
+          if (b.eligibility_score == null) return -1;
+          return b.eligibility_score - a.eligibility_score;
+        }),
+      };
+      setResult(sorted);
     } catch (e) {
       console.error(e);
     } finally {
@@ -164,6 +197,24 @@ export default function MatchingPage() {
             style={INPUT_STYLE}
           />
         </FormField>
+
+        {missingProfileFields.length > 0 && (
+          <div style={{
+            marginBottom: 8,
+            padding: "8px 10px",
+            background: "rgba(45,114,210,0.08)",
+            border: "1px solid rgba(45,114,210,0.2)",
+            borderRadius: 6,
+            fontSize: 10,
+            color: FOUNDRY.primary,
+            lineHeight: 1.4,
+          }}>
+            <Link href="/mypage" style={{ color: FOUNDRY.primary, textDecoration: "none", fontWeight: 600 }}>
+              프로필 완성 →
+            </Link>
+            {" "}{missingProfileFields[0]}을(를) 입력하면 더 정확한 매칭이 가능합니다
+          </div>
+        )}
 
         <div style={{ marginTop: "auto", paddingTop: 16 }}>
           <button
@@ -454,6 +505,73 @@ export default function MatchingPage() {
                           ✓ {r}
                         </span>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Eligibility score + checklist */}
+                  {grant.eligibility_score !== undefined && grant.eligibility_score !== null && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${FOUNDRY.border}` }}>
+                      {/* Score bar */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <div style={{
+                          flex: 1,
+                          height: 4,
+                          borderRadius: 2,
+                          background: "rgba(255,255,255,0.08)",
+                          overflow: "hidden",
+                        }}>
+                          <div style={{
+                            height: "100%",
+                            width: `${grant.eligibility_score}%`,
+                            borderRadius: 2,
+                            background: grant.eligibility_score >= 80 ? FOUNDRY.success
+                                       : grant.eligibility_score >= 60 ? FOUNDRY.primary
+                                       : FOUNDRY.warning,
+                          }} />
+                        </div>
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: grant.eligibility_score >= 80 ? FOUNDRY.success
+                                 : grant.eligibility_score >= 60 ? FOUNDRY.primary
+                                 : FOUNDRY.warning,
+                          flexShrink: 0,
+                          minWidth: 32,
+                          textAlign: "right" as const,
+                        }}>
+                          {grant.eligibility_score}%
+                        </span>
+                      </div>
+
+                      {/* Checklist items */}
+                      {grant.eligibility_checklist && grant.eligibility_checklist.map((item, i) => (
+                        <div key={i} style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 5,
+                          marginBottom: 3,
+                        }}>
+                          <span style={{ fontSize: 10, flexShrink: 0, marginTop: 1 }}>
+                            {item.status === "pass" ? "✅" : item.status === "fail" ? "❌" : "⚠️"}
+                          </span>
+                          <span style={{
+                            fontSize: 10,
+                            color: item.status === "pass" ? FOUNDRY.success
+                                   : item.status === "fail" ? FOUNDRY.danger
+                                   : FOUNDRY.warning,
+                            lineHeight: 1.4,
+                          }}>
+                            {item.message}
+                          </span>
+                        </div>
+                      ))}
+
+                      {/* Low confidence warning */}
+                      {grant.eligibility_confidence === "low" && (
+                        <p style={{ fontSize: 9, color: FOUNDRY.muted, marginTop: 4, margin: 0 }}>
+                          ⚠️ 공고문 직접 확인 권장
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
