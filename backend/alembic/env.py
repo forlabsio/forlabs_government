@@ -35,9 +35,13 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations():
+    import ssl as _ssl
     _connect_args = {}
-    if "supabase.co" in settings.async_database_url:
-        _connect_args["ssl"] = True
+    if "supabase" in settings.async_database_url:
+        _ssl_ctx = _ssl.create_default_context()
+        _ssl_ctx.check_hostname = False
+        _ssl_ctx.verify_mode = _ssl.CERT_NONE
+        _connect_args["ssl"] = _ssl_ctx
 
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
