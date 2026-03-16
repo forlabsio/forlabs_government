@@ -352,76 +352,127 @@ function GrantListContent() {
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
           alignItems: "center",
+          justifyContent: "space-between",
           gap: 8,
           marginBottom: 12,
         }}
       >
-        {/* Search input */}
-        <form onSubmit={handleSearchSubmit} style={{ display: "flex", alignItems: "center" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              background: FOUNDRY.card,
-              border: `1px solid ${FOUNDRY.border}`,
-              borderRadius: 4,
-              padding: "5px 10px",
-              gap: 6,
-            }}
-          >
-            <Search size={12} style={{ color: FOUNDRY.muted, flexShrink: 0 }} />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="검색..."
+        {/* Left: filters */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          {/* Search input */}
+          <form onSubmit={handleSearchSubmit} style={{ display: "flex", alignItems: "center" }}>
+            <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                background: FOUNDRY.card,
+                border: `1px solid ${FOUNDRY.border}`,
+                borderRadius: 4,
+                padding: "5px 10px",
+                gap: 6,
+              }}
+            >
+              <Search size={12} style={{ color: FOUNDRY.muted, flexShrink: 0 }} />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="검색..."
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  fontSize: 12,
+                  color: FOUNDRY.text,
+                  width: 160,
+                }}
+              />
+            </div>
+          </form>
+
+          {/* Category filter */}
+          <FilterDropdown
+            label="카테고리"
+            value={category}
+            options={CATEGORIES}
+            onChange={(v) => updateParam("category", v)}
+          />
+
+          {/* Status filter */}
+          <FilterDropdown
+            label="상태"
+            value={statusFilter}
+            options={STATUSES}
+            onChange={(v) => updateParam("status", v)}
+          />
+
+          {/* Source filter */}
+          <FilterDropdown
+            label="출처"
+            value={source}
+            options={SOURCES}
+            onChange={(v) => updateParam("source", v)}
+          />
+
+          {/* Region filter */}
+          <FilterDropdown
+            label="지역"
+            value={region}
+            options={REGIONS}
+            onChange={(v) => updateParam("region", v)}
+          />
+
+          {/* Clear filters */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
                 background: "transparent",
                 border: "none",
-                outline: "none",
-                fontSize: 12,
-                color: FOUNDRY.text,
-                width: 160,
+                color: FOUNDRY.muted,
+                fontSize: 11,
+                cursor: "pointer",
+                padding: "5px 6px",
               }}
-            />
-          </div>
-        </form>
+            >
+              <X size={11} />
+              초기화
+            </button>
+          )}
 
-        {/* Category filter */}
-        <FilterDropdown
-          label="카테고리"
-          value={category}
-          options={CATEGORIES}
-          onChange={(v) => updateParam("category", v)}
-        />
+          {/* Query chip */}
+          {q && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: FOUNDRY.glow,
+                border: `1px solid ${FOUNDRY.primary}`,
+                borderRadius: 4,
+                padding: "3px 8px",
+                fontSize: 11,
+                color: FOUNDRY.primary,
+              }}
+            >
+              <span>&ldquo;{q}&rdquo;</span>
+              <button
+                type="button"
+                onClick={() => updateParam("q", "")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: FOUNDRY.primary, padding: 0, lineHeight: 1 }}
+              >
+                <X size={10} />
+              </button>
+            </div>
+          )}
+        </div>
 
-        {/* Status filter */}
-        <FilterDropdown
-          label="상태"
-          value={statusFilter}
-          options={STATUSES}
-          onChange={(v) => updateParam("status", v)}
-        />
-
-        {/* Source filter */}
-        <FilterDropdown
-          label="출처"
-          value={source}
-          options={SOURCES}
-          onChange={(v) => updateParam("source", v)}
-        />
-
-        {/* Region filter */}
-        <FilterDropdown
-          label="지역"
-          value={region}
-          options={REGIONS}
-          onChange={(v) => updateParam("region", v)}
-        />
-
-        {/* Sort */}
+        {/* Right: sort buttons */}
         <div
           style={{
             display: "flex",
@@ -429,6 +480,7 @@ function GrantListContent() {
             border: `1px solid ${FOUNDRY.border}`,
             borderRadius: 4,
             overflow: "hidden",
+            flexShrink: 0,
           }}
         >
           {SORTS.map((s) => (
@@ -449,54 +501,6 @@ function GrantListContent() {
             </button>
           ))}
         </div>
-
-        {/* Clear filters */}
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              background: "transparent",
-              border: "none",
-              color: FOUNDRY.muted,
-              fontSize: 11,
-              cursor: "pointer",
-              padding: "5px 6px",
-            }}
-          >
-            <X size={11} />
-            초기화
-          </button>
-        )}
-
-        {/* Query chip */}
-        {q && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              background: FOUNDRY.glow,
-              border: `1px solid ${FOUNDRY.primary}`,
-              borderRadius: 4,
-              padding: "3px 8px",
-              fontSize: 11,
-              color: FOUNDRY.primary,
-            }}
-          >
-            <span>&ldquo;{q}&rdquo;</span>
-            <button
-              type="button"
-              onClick={() => updateParam("q", "")}
-              style={{ background: "none", border: "none", cursor: "pointer", color: FOUNDRY.primary, padding: 0, lineHeight: 1 }}
-            >
-              <X size={10} />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Dense Data Table ── */}
