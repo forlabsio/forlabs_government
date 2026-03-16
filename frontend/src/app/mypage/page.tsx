@@ -154,6 +154,26 @@ function FoundrySelect({
   );
 }
 
+const PROFILE_FIELDS: Array<{ key: keyof CompanyProfile; label: string }> = [
+  { key: "companyName",     label: "기업명" },
+  { key: "industry",        label: "업종" },
+  { key: "yearsInBusiness", label: "업력" },
+  { key: "region",          label: "소재지" },
+  { key: "employeeCount",   label: "직원수" },
+  { key: "revenueRange",    label: "매출 구간" },
+];
+
+function getCompleteness(profile: CompanyProfile): { pct: number; missing: string[] } {
+  const missing = PROFILE_FIELDS
+    .filter(f => {
+      const val = profile[f.key];
+      return val === undefined || val === null || val === "" || val === false;
+    })
+    .map(f => f.label);
+  const filled = PROFILE_FIELDS.length - missing.length;
+  return { pct: Math.round(filled / PROFILE_FIELDS.length * 100), missing };
+}
+
 export default function MyPage() {
   const { user, signOut } = useAuth();
   const [saved, setSaved] = useState(false);
@@ -278,6 +298,39 @@ export default function MyPage() {
               기업 정보
             </span>
           </div>
+
+          {/* Profile completeness */}
+          {(() => {
+            const { pct, missing } = getCompleteness(profile);
+            return (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: F.muted }}>프로필 완성도</span>
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: pct >= 80 ? F.success : pct >= 50 ? F.primary : F.warning,
+                  }}>
+                    {pct}%
+                  </span>
+                </div>
+                <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.08)", marginBottom: 8 }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${pct}%`,
+                    borderRadius: 2,
+                    background: pct >= 80 ? F.success : pct >= 50 ? F.primary : F.warning,
+                    transition: "width 0.3s",
+                  }} />
+                </div>
+                {missing.length > 0 && (
+                  <p style={{ fontSize: 11, color: F.primary, margin: 0 }}>
+                    {missing[0]}을(를) 입력하면 매칭 정확도가 높아집니다
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           <form onSubmit={handleSave}>
             {/* Company Name */}
