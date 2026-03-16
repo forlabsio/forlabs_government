@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchGrants, type Grant } from "@/lib/api";
+import { fetchGrants, fetchBriefing, type Grant, type BriefingResponse } from "@/lib/api";
 import { formatDDay, getDDay } from "@/lib/format";
 import { FOUNDRY } from "@/lib/theme";
 import {
@@ -117,6 +117,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [acceptingCount, setAcceptingCount] = useState(0);
+  const [briefing, setBriefing] = useState<BriefingResponse | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -147,6 +148,12 @@ export default function HomePage() {
       }
     }
     load();
+
+    // Load briefing data if user is logged in
+    const token = localStorage.getItem("govgrants_token");
+    if (token) {
+      fetchBriefing(token).then(setBriefing).catch(() => {});
+    }
   }, []);
 
   const now = new Date();
@@ -195,6 +202,55 @@ export default function HomePage() {
         <StatCard value="268" label="Agencies" />
         <StatCard value="5" label="Tech Areas" />
       </div>
+
+      {/* ── BRIEFING BANNER ────────────────────────────── */}
+      {briefing && briefing.available_count > 0 && (
+        <Link href="/briefing" style={{ textDecoration: "none", display: "block", marginBottom: 20 }}>
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(45,114,210,0.15) 0%, rgba(45,114,210,0.05) 100%)",
+              border: "1px solid rgba(45,114,210,0.3)",
+              borderRadius: 8,
+              padding: "14px 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              cursor: "pointer",
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 11, color: FOUNDRY.primary, fontWeight: 600, marginBottom: 2, margin: "0 0 2px" }}>
+                이번 주 귀사 과제 기회
+              </p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: FOUNDRY.text, fontFamily: "monospace", margin: "0 0 2px" }}>
+                {briefing.available_count}건
+                {briefing.total_opportunity_krw > 0
+                  ? ` · ${(briefing.total_opportunity_krw / 100_000_000).toFixed(1)}억원`
+                  : ""}
+              </p>
+              {briefing.urgent_count > 0 && (
+                <p style={{ fontSize: 11, color: FOUNDRY.danger, margin: 0 }}>
+                  🔴 마감 임박 {briefing.urgent_count}건
+                </p>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: FOUNDRY.primary,
+                background: FOUNDRY.glow,
+                borderRadius: 6,
+                padding: "8px 14px",
+                flexShrink: 0,
+                fontWeight: 600,
+              }}
+            >
+              브리핑 보기 →
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* ── INTELLIGENCE MODULES ───────────────────────── */}
       <SectionLabel>Intelligence Modules</SectionLabel>
