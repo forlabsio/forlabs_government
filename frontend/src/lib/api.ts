@@ -473,3 +473,41 @@ export async function fetchNetworkData(): Promise<GraphData & { stats: { company
   if (!res.ok) throw new Error("Failed to fetch network");
   return res.json();
 }
+
+// ─── Briefing API ────────────────────────────────────────
+
+export interface BriefingGrant {
+  grant_id: string;
+  title: string;
+  amount_max?: number;
+  end_date?: string;
+  days_left?: number;
+  eligibility_score?: number;
+  eligibility_checklist?: Array<{
+    field: string;
+    status: "pass" | "fail" | "unknown";
+    message: string;
+  }>;
+  eligibility_confidence?: string;
+}
+
+export interface BriefingResponse {
+  week_label: string;
+  date_label: string;
+  company_label: string;
+  available_count: number;
+  urgent_count: number;
+  total_opportunity_krw: number;
+  urgent_grants: BriefingGrant[];
+  new_grants: BriefingGrant[];
+  profile_incomplete: boolean;
+  missing_profile_fields: string[];
+}
+
+export async function fetchBriefing(token: string): Promise<BriefingResponse> {
+  const res = await fetch(`${API_URL}/api/briefing`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch briefing");
+  return res.json();
+}
