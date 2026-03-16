@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import FetchLog, GrantProject, GrantSource
+from app.services.requirement_parser import parse_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,14 @@ class BaseCollector(ABC):
                     grant = GrantProject(dedup_hash=dedup_hash, **normalized)
                     db.add(grant)
                     await db.flush()
+                    # Auto-parse requirements for new grant (non-blocking)
+                    if grant.summary:
+                        try:
+                            parsed = await parse_requirements(grant.summary)
+                            if parsed:
+                                grant.parsed_requirements = parsed
+                        except Exception as e:
+                            logger.warning("Auto-parse failed for grant %s: %s", getattr(grant, 'dedup_hash', '?'), e)
                     db.add(GrantSource(
                         grant_id=grant.id, source=self.source_name,
                         source_id=source_id, raw_data=raw,
