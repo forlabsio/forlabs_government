@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin, auth, bookmarks, grants, intelligence, search
+from app.routers import admin, auth, bookmarks, briefing, grants, intelligence, search
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,7 @@ app.include_router(bookmarks.router)
 app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(intelligence.router)
+app.include_router(briefing.router)
 
 
 @app.get("/health")

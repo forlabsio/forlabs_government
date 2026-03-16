@@ -237,3 +237,30 @@ class MatchRequest(BaseModel):
     employee_count: int | None = None
     company_age: int | None = None
     revenue_range: str | None = None
+
+
+# ── Briefing Schemas ────────────────────────────────────────────
+
+
+class BriefingGrant(BaseModel):
+    grant_id: str
+    title: str
+    amount_max: int | None = None
+    end_date: str | None = None
+    days_left: int | None = None
+    eligibility_score: float | None = None
+    eligibility_checklist: list[ChecklistItem] = []
+    eligibility_confidence: str = "low"
+
+
+class BriefingResponse(BaseModel):
+    week_label: str
+    date_label: str
+    company_label: str
+    available_count: int
+    urgent_count: int
+    total_opportunity_krw: int
+    urgent_grants: list[BriefingGrant]
+    new_grants: list[BriefingGrant]
+    profile_incomplete: bool
+    missing_profile_fields: list[str]
