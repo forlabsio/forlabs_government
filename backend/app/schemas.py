@@ -59,6 +59,8 @@ class UserProfile(BaseModel):
     region: str | None = None
     employee_count: int | None = None
     revenue_range: str | None = None
+    is_corporate: bool = False
+    is_venture: bool = False
     email_opt_in: bool = True
 
 
@@ -75,6 +77,8 @@ class UserResponse(BaseModel):
     region: str | None = None
     employee_count: int | None = None
     revenue_range: str | None = None
+    is_corporate: bool = False
+    is_venture: bool = False
     email_opt_in: bool = True
     created_at: datetime | None = None
 
@@ -237,6 +241,8 @@ class MatchRequest(BaseModel):
     employee_count: int | None = None
     company_age: int | None = None
     revenue_range: str | None = None
+    is_corporate: bool | None = None
+    is_venture: bool | None = None
 
 
 # ── Briefing Schemas ────────────────────────────────────────────

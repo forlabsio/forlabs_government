@@ -71,6 +71,8 @@ export default function MatchingPage() {
     employee_count: "",
     company_age: "",
     revenue_range: "",
+    is_corporate: false as boolean | undefined,
+    is_venture: false as boolean | undefined,
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MatchResult | null>(null);
@@ -88,6 +90,8 @@ export default function MatchingPage() {
           employee_count: p.employeeCount ? String(p.employeeCount) : prev.employee_count,
           company_age: p.yearsInBusiness ? String(p.yearsInBusiness) : prev.company_age,
           revenue_range: p.revenueRange || prev.revenue_range,
+          is_corporate: p.isCorporate ?? prev.is_corporate,
+          is_venture: p.isVenture ?? prev.is_venture,
         }));
         const missing: string[] = [];
         if (!p.industry) missing.push("업종");
@@ -109,6 +113,8 @@ export default function MatchingPage() {
         employee_count: form.employee_count ? Number(form.employee_count) : undefined,
         company_age: form.company_age ? Number(form.company_age) : undefined,
         revenue_range: form.revenue_range || undefined,
+        is_corporate: form.is_corporate,
+        is_venture: form.is_venture,
       });
       // Sort by eligibility_score descending before setting state
       const sorted = {

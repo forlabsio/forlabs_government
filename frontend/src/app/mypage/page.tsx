@@ -75,6 +75,8 @@ interface CompanyProfile {
   region: string;
   employeeCount: string;
   revenueRange: string;
+  isCorporate: boolean;
+  isVenture: boolean;
   emailNotification: boolean;
 }
 
@@ -161,6 +163,7 @@ const PROFILE_FIELDS: Array<{ key: keyof CompanyProfile; label: string }> = [
   { key: "region",          label: "소재지" },
   { key: "employeeCount",   label: "직원수" },
   { key: "revenueRange",    label: "매출 구간" },
+  { key: "isCorporate",     label: "법인 여부" },
 ];
 
 function getCompleteness(profile: CompanyProfile): { pct: number; missing: string[] } {
@@ -185,6 +188,8 @@ export default function MyPage() {
     region: "",
     employeeCount: "",
     revenueRange: "",
+    isCorporate: false,
+    isVenture: false,
     emailNotification: true,
   });
 
@@ -203,6 +208,8 @@ export default function MyPage() {
             region: me.region || "",
             employeeCount: me.employee_count ? String(me.employee_count) : "",
             revenueRange: me.revenue_range || "",
+            isCorporate: me.is_corporate ?? false,
+            isVenture: me.is_venture ?? false,
             emailNotification: me.email_opt_in ?? true,
           });
           return;
@@ -240,6 +247,8 @@ export default function MyPage() {
           region: profile.region || undefined,
           employee_count: profile.employeeCount ? parseInt(profile.employeeCount) : undefined,
           revenue_range: profile.revenueRange || undefined,
+          is_corporate: profile.isCorporate,
+          is_venture: profile.isVenture,
           email_opt_in: profile.emailNotification,
         });
       }
@@ -403,6 +412,56 @@ export default function MyPage() {
                   <option key={rev} value={rev}>{rev}</option>
                 ))}
               </FoundrySelect>
+            </div>
+
+            {/* Corporate / Venture flags — 2-column */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+              {(
+                [
+                  { key: "isCorporate" as const, label: "법인 기업", desc: "법인 필수 과제 지원 가능" },
+                  { key: "isVenture" as const, label: "벤처기업 인증", desc: "벤처기업 대상 과제 지원 가능" },
+                ] as const
+              ).map(({ key, label, desc }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => updateField(key, !profile[key])}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    background: profile[key] ? "rgba(45,114,210,0.12)" : F.card,
+                    border: `1px solid ${profile[key] ? F.primary : F.border}`,
+                    borderRadius: 6,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    border: `1.5px solid ${profile[key] ? F.primary : F.border}`,
+                    background: profile[key] ? F.primary : "transparent",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    {profile[key] && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: F.text, margin: 0 }}>{label}</p>
+                    <p style={{ fontSize: 10, color: F.muted, margin: 0 }}>{desc}</p>
+                  </div>
+                </button>
+              ))}
             </div>
 
             {/* Email Notification Toggle */}

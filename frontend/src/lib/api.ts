@@ -162,6 +162,8 @@ export interface UserProfile {
   region?: string;
   employee_count?: number;
   revenue_range?: string;
+  is_corporate?: boolean;
+  is_venture?: boolean;
   email_opt_in?: boolean;
 }
 
@@ -176,6 +178,8 @@ export interface UserInfo {
   region?: string;
   employee_count?: number;
   revenue_range?: string;
+  is_corporate: boolean;
+  is_venture: boolean;
   email_opt_in: boolean;
   created_at?: string;
   bookmark_count?: number;
@@ -458,6 +462,8 @@ export async function fetchMatchResult(profile: {
   employee_count?: number;
   company_age?: number;
   revenue_range?: string;
+  is_corporate?: boolean;
+  is_venture?: boolean;
 }): Promise<MatchResult> {
   const res = await fetch(`${API_URL}/api/intelligence/match`, {
     method: "POST",

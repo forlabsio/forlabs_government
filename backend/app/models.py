@@ -44,6 +44,8 @@ class User(Base):
     region: Mapped[str | None] = mapped_column(String)
     employee_count: Mapped[int | None] = mapped_column(Integer)
     revenue_range: Mapped[str | None] = mapped_column(String)
+    is_corporate: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_venture: Mapped[bool] = mapped_column(Boolean, default=False)
     email_opt_in: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
+METROPOLITAN_REGIONS: set[str] = {"서울", "경기", "인천"}
+
 REVENUE_UPPER_BOUNDS: dict[str, int] = {
     "1억 미만":   100_000_000,
     "1억~5억":    500_000_000,
@@ -182,6 +184,156 @@ def compute_eligibility(
                 status="unknown",
                 message="매출 미입력 → 공고문 확인 필요",
             ))
+
+    # 6. Excluded industry check
+    user_industry2 = profile.get("industry")
+    excluded_industries = parsed_requirements.get("excluded_industries") or []
+
+    if excluded_industries and user_industry2:
+        is_excluded = _industry_matches(user_industry2, excluded_industries)
+        if is_excluded:
+            checklist.append(CheckItem(
+                field="excluded_industry",
+                status="fail",
+                message=f"업종 {user_industry2} → 지원 제외 업종 ({', '.join(excluded_industries[:3])})",
+            ))
+
+    # 7. Metropolitan / non-metropolitan check
+    user_region2 = profile.get("region")
+    metro_only = parsed_requirements.get("metropolitan_only")
+
+    if metro_only is not None:
+        if user_region2:
+            is_metro = user_region2 in METROPOLITAN_REGIONS
+            if metro_only is True:
+                region_ok = is_metro
+                checklist.append(CheckItem(
+                    field="metropolitan",
+                    status="pass" if region_ok else "fail",
+                    message=f"{user_region2} {'수도권 ✓' if region_ok else '→ 수도권 소재 기업만 지원 가능'}",
+                ))
+            else:  # metro_only is False → non-metropolitan only
+                region_ok = not is_metro
+                checklist.append(CheckItem(
+                    field="metropolitan",
+                    status="pass" if region_ok else "fail",
+                    message=f"{user_region2} {'비수도권 ✓' if region_ok else '→ 비수도권 기업만 지원 가능'}",
+                ))
+        else:
+            checklist.append(CheckItem(
+                field="metropolitan",
+                status="unknown",
+                message="소재지 미입력 → 수도권/비수도권 제한 직접 확인 필요",
+            ))
+
+    # 8. Minimum employee count check
+    user_emp2 = profile.get("employee_count")
+    min_emp = parsed_requirements.get("employee_count_min")
+
+    if min_emp is not None:
+        if user_emp2 is not None:
+            emp_min_ok = user_emp2 >= min_emp
+            checklist.append(CheckItem(
+                field="employee_count_min",
+                status="pass" if emp_min_ok else "fail",
+                message=f"직원 {user_emp2}명 {'≥' if emp_min_ok else '<'} 최소 {min_emp}명",
+            ))
+        else:
+            checklist.append(CheckItem(
+                field="employee_count_min",
+                status="unknown",
+                message="직원수 미입력 → 직접 확인 필요",
+            ))
+
+    # 9. Minimum revenue check
+    user_rev_range2 = profile.get("revenue_range")
+    min_rev = parsed_requirements.get("min_revenue_krw")
+
+    if min_rev is not None:
+        if user_rev_range2 and user_rev_range2 in REVENUE_UPPER_BOUNDS:
+            user_upper2 = REVENUE_UPPER_BOUNDS[user_rev_range2]
+            def fmt2(v: int) -> str:
+                return f"{v // 100_000_000}억" if v >= 100_000_000 else f"{v // 10_000}만"
+            # Conservative: pass only if user's LOWER bound exceeds min_rev
+            # Use half of upper bound as a rough lower estimate (except 1억 미만 → 0)
+            rev_lower_estimates = {
+                "1억 미만": 0,
+                "1억~5억": 100_000_000,
+                "5억~10억": 500_000_000,
+                "10억~50억": 1_000_000_000,
+                "50억~100억": 5_000_000_000,
+                "100억 이상": 10_000_000_000,
+            }
+            user_lower = rev_lower_estimates.get(user_rev_range2, 0)
+            min_rev_ok = user_lower >= min_rev
+            checklist.append(CheckItem(
+                field="min_revenue",
+                status="pass" if min_rev_ok else "fail",
+                message=f"매출 하한 {fmt2(user_lower)} {'≥' if min_rev_ok else '<'} 최소 요건 {fmt2(min_rev)}",
+            ))
+        else:
+            checklist.append(CheckItem(
+                field="min_revenue",
+                status="unknown",
+                message="매출 미입력 → 최소 매출 요건 직접 확인 필요",
+            ))
+
+    # 10. Corporate status check
+    require_corporate = parsed_requirements.get("require_corporate")
+
+    if require_corporate is True:
+        user_is_corporate = profile.get("is_corporate")
+        if user_is_corporate is True:
+            checklist.append(CheckItem(
+                field="corporate",
+                status="pass",
+                message="법인 기업 ✓ (법인 필수 요건 충족)",
+            ))
+        elif user_is_corporate is False:
+            checklist.append(CheckItem(
+                field="corporate",
+                status="fail",
+                message="개인사업자 → 법인만 지원 가능",
+            ))
+        else:
+            checklist.append(CheckItem(
+                field="corporate",
+                status="unknown",
+                message="법인/개인사업자 미입력 → 직접 확인 필요",
+            ))
+
+    # 11. Venture certification check
+    require_venture = parsed_requirements.get("require_venture_cert")
+
+    if require_venture is True:
+        user_is_venture = profile.get("is_venture")
+        if user_is_venture is True:
+            checklist.append(CheckItem(
+                field="venture_cert",
+                status="pass",
+                message="벤처기업 인증 ✓",
+            ))
+        elif user_is_venture is False:
+            checklist.append(CheckItem(
+                field="venture_cert",
+                status="fail",
+                message="벤처기업 미인증 → 벤처기업 인증 필수",
+            ))
+        else:
+            checklist.append(CheckItem(
+                field="venture_cert",
+                status="unknown",
+                message="벤처기업 인증 여부 미입력 → 직접 확인 필요",
+            ))
+
+    # 12. Unextracted conditions (always unknown — flag for manual review)
+    unextracted = parsed_requirements.get("unextracted_conditions") or []
+    for condition in unextracted[:3]:  # cap at 3 to avoid bloat
+        checklist.append(CheckItem(
+            field="manual_check",
+            status="unknown",
+            message=f"직접 확인 필요: {condition}",
+        ))
 
     # Score calculation
     # Failed checks are weighted 2x to make disqualifying failures more impactful.

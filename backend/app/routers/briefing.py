@@ -32,6 +32,8 @@ def _build_profile_dict(user: User) -> dict:
         "region": user.region,
         "employee_count": user.employee_count,
         "revenue_range": user.revenue_range,
+        "is_corporate": getattr(user, "is_corporate", False),
+        "is_venture": getattr(user, "is_venture", False),
     }
 
 

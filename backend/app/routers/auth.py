@@ -198,6 +198,8 @@ async def update_me(
     user.region = body.region
     user.employee_count = body.employee_count
     user.revenue_range = body.revenue_range
+    user.is_corporate = body.is_corporate
+    user.is_venture = body.is_venture
     user.email_opt_in = body.email_opt_in
     await db.commit()
     await db.refresh(user)
