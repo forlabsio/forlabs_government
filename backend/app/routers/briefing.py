@@ -54,11 +54,11 @@ def _missing_fields(user: User) -> list[str]:
         missing.append("기업명")
     if not user.industry:
         missing.append("업종")
-    if not user.company_age:
+    if user.company_age is None:
         missing.append("업력")
     if not user.region:
         missing.append("소재지")
-    if not user.employee_count:
+    if user.employee_count is None:
         missing.append("직원수")
     if not user.revenue_range:
         missing.append("매출 구간")

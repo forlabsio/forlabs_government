@@ -90,7 +90,7 @@ async def batch_parse(limit: int | None = None, dry_run: bool = False) -> None:
             )
 
             if i + BATCH_SIZE < len(grants):
-                time.sleep(DELAY_BETWEEN_BATCHES)
+                await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
     logger.info(
         "Batch parse complete. Processed: %d, Failed/skipped: %d", processed, failed

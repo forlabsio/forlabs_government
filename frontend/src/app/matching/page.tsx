@@ -70,6 +70,7 @@ export default function MatchingPage() {
     region: "전국",
     employee_count: "",
     company_age: "",
+    revenue_range: "",
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MatchResult | null>(null);
@@ -86,6 +87,7 @@ export default function MatchingPage() {
           region: p.region || prev.region,
           employee_count: p.employeeCount ? String(p.employeeCount) : prev.employee_count,
           company_age: p.yearsInBusiness ? String(p.yearsInBusiness) : prev.company_age,
+          revenue_range: p.revenueRange || prev.revenue_range,
         }));
         const missing: string[] = [];
         if (!p.industry) missing.push("업종");
@@ -106,6 +108,7 @@ export default function MatchingPage() {
         region: form.region,
         employee_count: form.employee_count ? Number(form.employee_count) : undefined,
         company_age: form.company_age ? Number(form.company_age) : undefined,
+        revenue_range: form.revenue_range || undefined,
       });
       // Sort by eligibility_score descending before setting state
       const sorted = {
