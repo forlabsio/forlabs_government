@@ -398,6 +398,14 @@ export interface MatchResult {
     category?: string;
     match_score?: number;
     match_reasons?: string[];
+    // Eligibility fields
+    eligibility_score?: number;
+    eligibility_checklist?: Array<{
+      field: string;
+      status: "pass" | "fail" | "unknown";
+      message: string;
+    }>;
+    eligibility_confidence?: "high" | "medium" | "low";
   }[];
   graph: GraphData;
   match_reason: string;
@@ -449,6 +457,7 @@ export async function fetchMatchResult(profile: {
   region: string;
   employee_count?: number;
   company_age?: number;
+  revenue_range?: string;
 }): Promise<MatchResult> {
   const res = await fetch(`${API_URL}/api/intelligence/match`, {
     method: "POST",

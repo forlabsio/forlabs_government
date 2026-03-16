@@ -7,11 +7,13 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.graph import run_query
 from app.models import GrantProject, User
-from app.schemas import GrantListItem
+from app.schemas import GrantListItem, MatchRequest
+from app.services.eligibility import compute_eligibility
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
@@ -387,14 +389,23 @@ _EMP_CATEGORY_BOOST: list[tuple[tuple[int, int], list[str]]] = [
 
 @router.post("/match")
 async def auto_match(
-    body: dict,
+    body: MatchRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Score-based grant matching: industry keywords + company profile filters."""
-    industry = body.get("industry", "")
-    region = body.get("region", "")
-    employee_count = body.get("employee_count")  # int or None
-    company_age = body.get("company_age")        # int or None
+    industry = body.industry
+    region = body.region
+    employee_count = body.employee_count  # int or None
+    company_age = body.company_age        # int or None
+
+    # Build profile dict for eligibility computation
+    profile_dict = {
+        "company_age": body.company_age,
+        "industry": body.industry,
+        "region": body.region if body.region else None,
+        "employee_count": body.employee_count,
+        "revenue_range": body.revenue_range,
+    }
 
     keywords = _INDUSTRY_KEYWORDS.get(industry, [])
 
@@ -419,6 +430,9 @@ async def auto_match(
     candidates = pg_result.scalars().all()
 
     # ── 2. Score each grant ────────────────────────────────────────────────
+    # Keep a mapping from grant_id → GrantProject so we can access parsed_requirements later
+    grant_orm_map: dict[str, GrantProject] = {str(g.id): g for g in candidates}
+
     def score_grant(g: GrantProject) -> tuple[int, dict]:
         score = 0
         reasons: list[str] = []
@@ -485,6 +499,28 @@ async def auto_match(
     if len(top) < 5:
         top = [item for _, item in scored]
     top_grants = top[:20]
+
+    # ── 2b. Compute eligibility for each matched grant ─────────────────────
+    for grant_dict in top_grants:
+        gid = grant_dict["grant_id"]
+        orm_obj = grant_orm_map.get(gid)
+        parsed_reqs: dict = {}
+        if orm_obj is not None and orm_obj.parsed_requirements:
+            parsed_reqs = orm_obj.parsed_requirements
+
+        elig = compute_eligibility(profile_dict, parsed_reqs)
+        grant_dict["eligibility_score"] = elig.score
+        grant_dict["eligibility_checklist"] = [
+            {"field": c.field, "status": c.status, "message": c.message}
+            for c in elig.checklist
+        ]
+        grant_dict["eligibility_confidence"] = elig.confidence
+
+    # ── 2c. Sort by eligibility_score descending (None treated as lowest) ──
+    top_grants.sort(
+        key=lambda x: (x.get("eligibility_score") is not None, x.get("eligibility_score") or 0),
+        reverse=True,
+    )
 
     # ── 3. Build match reason summary ─────────────────────────────────────
     filters_used = []

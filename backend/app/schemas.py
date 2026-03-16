@@ -217,3 +217,23 @@ class DashboardStats(BaseModel):
     total_users: int
     today_searches: int
     fetch_logs_today: list[FetchLogResponse] = []
+
+
+# ── Eligibility Schemas ─────────────────────────────────────────
+
+
+class ChecklistItem(BaseModel):
+    field: str
+    status: str  # "pass" | "fail" | "unknown"
+    message: str
+
+
+# ── Match Schemas ───────────────────────────────────────────────
+
+
+class MatchRequest(BaseModel):
+    industry: str = ""
+    region: str = ""
+    employee_count: int | None = None
+    company_age: int | None = None
+    revenue_range: str | None = None
