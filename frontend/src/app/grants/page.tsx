@@ -243,7 +243,7 @@ function GrantListContent() {
       } else {
         const params: Record<string, string> = {
           page: String(currentPage),
-          size: String(PAGE_SIZE),
+          page_size: String(PAGE_SIZE),
         };
         if (category) params.category = category;
         if (sort) params.sort = sort;

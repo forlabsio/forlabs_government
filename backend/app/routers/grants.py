@@ -14,6 +14,13 @@ from app.schemas import GrantDetail, GrantListItem, GrantListResponse
 router = APIRouter(prefix="/api/grants", tags=["grants"])
 
 
+def _effective_status(grant: GrantProject) -> str:
+    """Return status, auto-expiring to '마감' if end_date has passed."""
+    if grant.end_date and grant.end_date < date.today() and grant.status in ("접수중", "공고중", "진행중"):
+        return "마감"
+    return grant.status or ""
+
+
 def _grant_to_list_item(grant: GrantProject) -> GrantListItem:
     """Convert a GrantProject ORM object to a GrantListItem schema."""
     source_names = [gs.source for gs in grant.sources] if grant.sources else []
@@ -28,7 +35,7 @@ def _grant_to_list_item(grant: GrantProject) -> GrantListItem:
             "organization": grant.organization,
             "end_date": grant.end_date,
             "start_date": grant.start_date,
-            "status": grant.status,
+            "status": _effective_status(grant),
             "detail_url": grant.detail_url,
             "sources": source_names,
             "view_count": grant.view_count,
@@ -68,22 +75,25 @@ async def list_grants(
             count_query.join(GrantProject.sources).where(GrantSource.source == source)
         )
 
+    # Active-only filter: shared by deadline and default sorts
+    _active_filter = (GrantProject.end_date >= date.today()) | (GrantProject.end_date.is_(None))
+
     # Sorting
     if sort == "deadline":
-        # Active grants first (nearest deadline), then ongoing/no-deadline items
-        query = query.where(
-            (GrantProject.end_date >= date.today()) | (GrantProject.end_date.is_(None))
-        )
-        count_query = count_query.where(
-            (GrantProject.end_date >= date.today()) | (GrantProject.end_date.is_(None))
-        )
+        # Active grants only, sorted by nearest deadline
+        query = query.where(_active_filter)
+        count_query = count_query.where(_active_filter)
         query = query.order_by(GrantProject.end_date.asc().nullslast())
     elif sort == "recent":
+        # All grants (including expired) sorted by newest first
         query = query.order_by(GrantProject.created_at.desc().nullslast())
     elif sort == "amount":
         # Highest amount first, nulls last
         query = query.order_by(GrantProject.amount_max.desc().nullslast())
     else:
+        # Default: active grants only, sorted by nearest deadline
+        query = query.where(_active_filter)
+        count_query = count_query.where(_active_filter)
         query = query.order_by(GrantProject.end_date.asc().nullslast())
 
     # Pagination
@@ -135,7 +145,7 @@ async def get_grant(
             "amount_max": grant.amount_max,
             "organization": grant.organization,
             "end_date": grant.end_date,
-            "status": grant.status,
+            "status": _effective_status(grant),
             "detail_url": grant.detail_url,
             "sources": source_names,
             "view_count": grant.view_count,
