@@ -22,6 +22,28 @@ REVENUE_UPPER_BOUNDS: dict[str, int] = {
     "100억 이상": 999_999_999_999,
 }
 
+def _to_int(v) -> int | None:
+    """Safely coerce parsed_requirements values to int.
+    Claude sometimes returns {"value": 30} or "30명" instead of bare int.
+    """
+    if v is None:
+        return None
+    if isinstance(v, int):
+        return v
+    if isinstance(v, float):
+        return int(v)
+    if isinstance(v, dict):
+        for key in ("value", "max", "count", "number"):
+            if key in v and isinstance(v[key], (int, float)):
+                return int(v[key])
+        return None
+    if isinstance(v, str):
+        import re
+        m = re.search(r"\d+", v)
+        return int(m.group()) if m else None
+    return None
+
+
 INDUSTRY_ALIASES: dict[str, list[str]] = {
     "IT/소프트웨어": ["IT", "소프트웨어", "AI", "정보통신", "ICT", "SW"],
     "바이오/의료":   ["바이오", "의료", "헬스케어", "제약", "바이오헬스"],
@@ -74,9 +96,9 @@ def compute_eligibility(
     checklist: list[CheckItem] = []
 
     # 1. Company age check
-    user_age = profile.get("company_age")
-    max_age = parsed_requirements.get("max_company_age_years")
-    min_age = parsed_requirements.get("min_company_age_years")
+    user_age = _to_int(profile.get("company_age"))
+    max_age = _to_int(parsed_requirements.get("max_company_age_years"))
+    min_age = _to_int(parsed_requirements.get("min_company_age_years"))
 
     if user_age is not None and (max_age is not None or min_age is not None):
         age_ok = True
@@ -145,8 +167,8 @@ def compute_eligibility(
             ))
 
     # 4. Employee count check
-    user_emp = profile.get("employee_count")
-    max_emp = parsed_requirements.get("employee_count_max")
+    user_emp = _to_int(profile.get("employee_count"))
+    max_emp = _to_int(parsed_requirements.get("employee_count_max"))
 
     if max_emp is not None:
         if user_emp is not None:
@@ -164,13 +186,13 @@ def compute_eligibility(
             ))
 
     # 5. Revenue check (max)
-    user_rev_krw = profile.get("revenue_krw")
+    user_rev_krw = _to_int(profile.get("revenue_krw"))
     # fallback: revenue_range string → upper bound
     if user_rev_krw is None:
         user_rev_range = profile.get("revenue_range")
         if user_rev_range and user_rev_range in REVENUE_UPPER_BOUNDS:
             user_rev_krw = REVENUE_UPPER_BOUNDS[user_rev_range]
-    max_rev = parsed_requirements.get("max_revenue_krw")
+    max_rev = _to_int(parsed_requirements.get("max_revenue_krw"))
 
     def _fmt_krw(v: int) -> str:
         return f"{v // 100_000_000}억" if v >= 100_000_000 else f"{v // 10_000}만"
@@ -232,8 +254,8 @@ def compute_eligibility(
             ))
 
     # 8. Minimum employee count check
-    user_emp2 = profile.get("employee_count")
-    min_emp = parsed_requirements.get("employee_count_min")
+    user_emp2 = _to_int(profile.get("employee_count"))
+    min_emp = _to_int(parsed_requirements.get("employee_count_min"))
 
     if min_emp is not None:
         if user_emp2 is not None:
@@ -251,7 +273,7 @@ def compute_eligibility(
             ))
 
     # 9. Minimum revenue check
-    min_rev = parsed_requirements.get("min_revenue_krw")
+    min_rev = _to_int(parsed_requirements.get("min_revenue_krw"))
 
     if min_rev is not None:
         if user_rev_krw is not None:
