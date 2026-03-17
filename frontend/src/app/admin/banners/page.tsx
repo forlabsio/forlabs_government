@@ -13,12 +13,12 @@ import type { CSSProperties } from "react";
 interface Banner {
   id: string;
   title: string;
-  target_url: string;
+  link_url: string;
   image_url: string;
-  status: "active" | "inactive";
+  is_active: boolean;
   impressions: number;
   clicks: number;
-  created_at: string;
+  created_at?: string;
 }
 
 const TH: CSSProperties = {
@@ -54,7 +54,7 @@ export default function BannersPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: "", target_url: "", image_url: "" });
+  const [form, setForm] = useState({ title: "", link_url: "", image_url: "" });
   const [focused, setFocused] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function BannersPage() {
       const token = localStorage.getItem("govgrants_token");
       if (token) {
         const result = await fetchBanners(token);
-        setBanners(result?.banners || []);
+        setBanners(Array.isArray(result) ? result : []);
       }
     } catch {
       // Use empty array on error
@@ -84,7 +84,7 @@ export default function BannersPage() {
       if (token) {
         await createBannerApi(token, form);
         setShowModal(false);
-        setForm({ title: "", target_url: "", image_url: "" });
+        setForm({ title: "", link_url: "", image_url: "" });
         await loadBanners();
       }
     } catch {
@@ -184,24 +184,24 @@ export default function BannersPage() {
                       </td>
                       <td style={{ padding: "12px 16px", borderBottom: `1px solid ${FOUNDRY.border}` }}>
                         <a
-                          href={banner.target_url}
+                          href={banner.link_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ fontSize: 13, color: FOUNDRY.primary, textDecoration: "none" }}
                         >
-                          {banner.target_url.length > 40 ? banner.target_url.slice(0, 40) + "..." : banner.target_url}
+                          {banner.link_url.length > 40 ? banner.link_url.slice(0, 40) + "..." : banner.link_url}
                         </a>
                       </td>
                       <td style={{ padding: "12px 16px", borderBottom: `1px solid ${FOUNDRY.border}` }}>
                         <span style={{
-                          background: banner.status === "active" ? "rgba(35,162,109,0.15)" : "rgba(255,255,255,0.06)",
-                          color: banner.status === "active" ? FOUNDRY.success : FOUNDRY.muted,
+                          background: banner.is_active ? "rgba(35,162,109,0.15)" : "rgba(255,255,255,0.06)",
+                          color: banner.is_active ? FOUNDRY.success : FOUNDRY.muted,
                           borderRadius: 100,
                           padding: "3px 9px",
                           fontSize: 11,
                           fontWeight: 500,
                         }}>
-                          {banner.status === "active" ? "활성" : "비활성"}
+                          {banner.is_active ? "활성" : "비활성"}
                         </span>
                       </td>
                       <td style={{ padding: "12px 16px", textAlign: "right", borderBottom: `1px solid ${FOUNDRY.border}` }}>
@@ -322,16 +322,16 @@ export default function BannersPage() {
                 />
               </div>
               <div>
-                <label style={labelStyle}>타겟 URL</label>
+                <label style={labelStyle}>링크 URL</label>
                 <input
                   type="url"
-                  value={form.target_url}
-                  onChange={(e) => setForm((f) => ({ ...f, target_url: e.target.value }))}
-                  onFocus={() => setFocused(f => ({ ...f, target_url: true }))}
-                  onBlur={() => setFocused(f => ({ ...f, target_url: false }))}
+                  value={form.link_url}
+                  onChange={(e) => setForm((f) => ({ ...f, link_url: e.target.value }))}
+                  onFocus={() => setFocused(f => ({ ...f, link_url: true }))}
+                  onBlur={() => setFocused(f => ({ ...f, link_url: false }))}
                   placeholder="https://example.com"
                   required
-                  style={inputStyle(!!focused.target_url)}
+                  style={inputStyle(!!focused.link_url)}
                 />
               </div>
               <div>
