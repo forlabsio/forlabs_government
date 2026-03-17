@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+# Install tzdata for Asia/Seoul timezone support
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
+ENV TZ=Asia/Seoul
+
 WORKDIR /app
 
 # Install dependencies only (not the package itself)
