@@ -74,6 +74,8 @@ def _industry_matches(user_industry: str, allowed: list[str]) -> bool:
     user_lower = user_industry.lower()
     aliases = INDUSTRY_ALIASES.get(user_industry, [user_industry])
     for allowed_item in allowed:
+        if not allowed_item:
+            continue
         allowed_lower = allowed_item.lower()
         if allowed_lower in user_lower or user_lower in allowed_lower:
             return True
