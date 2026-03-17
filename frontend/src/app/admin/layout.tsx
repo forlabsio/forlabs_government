@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
   LayoutDashboard,
   Search,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { FOUNDRY } from "@/lib/theme";
+import { useAuth } from "@/components/AuthProvider";
 
 const NAV_ITEMS = [
   { label: "대시보드",   href: "/admin",                 icon: LayoutDashboard },
@@ -23,6 +25,18 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && (!user || !user.is_admin)) {
+      router.replace("/");
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user?.is_admin) {
+    return null;
+  }
 
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin";
