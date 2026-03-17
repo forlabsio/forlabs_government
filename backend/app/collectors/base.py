@@ -104,7 +104,7 @@ class BaseCollector(ABC):
         except Exception as e:
             logger.exception(f"Collector {self.source_name} failed")
             log.status = "failed"
-            log.error_message = str(e)
+            log.error_message = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
         finally:
             log.finished_at = datetime.now(timezone.utc)
             await db.commit()

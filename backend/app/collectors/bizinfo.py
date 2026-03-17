@@ -15,7 +15,7 @@ class BizinfoCollector(BaseCollector):
         page = 1
         page_size = 100
 
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
             while True:
                 params = {
                     "crtfcKey": settings.bizinfo_api_key,
