@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
-# Install tzdata for Asia/Seoul timezone support
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
+# Install tzdata + ca-certificates (needed for Korean government API SSL)
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV TZ=Asia/Seoul
 
 WORKDIR /app

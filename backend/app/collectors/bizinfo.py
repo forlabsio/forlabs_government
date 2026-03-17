@@ -1,9 +1,12 @@
 # backend/app/collectors/bizinfo.py
+import logging
 import httpx
 from datetime import date
 
 from app.collectors.base import BaseCollector
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class BizinfoCollector(BaseCollector):
@@ -15,6 +18,7 @@ class BizinfoCollector(BaseCollector):
         page = 1
         page_size = 100
 
+        logger.info("bizinfo: starting fetch, api_key_set=%s", bool(settings.bizinfo_api_key))
         async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
             while True:
                 params = {
@@ -24,7 +28,9 @@ class BizinfoCollector(BaseCollector):
                     "pageUnit": page_size,
                     "pageIndex": page,
                 }
+                logger.info("bizinfo: GET page=%d", page)
                 resp = await client.get(url, params=params)
+                logger.info("bizinfo: response status=%d", resp.status_code)
                 resp.raise_for_status()
                 data = resp.json()
 
