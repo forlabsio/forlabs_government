@@ -27,7 +27,6 @@ const SORTS = [
 
 const SOURCES = [
   { label: "전체 출처", value: "" },
-  { label: "기업마당", value: "bizinfo" },
   { label: "KOCCA", value: "kocca" },
   { label: "K-Startup", value: "kstartup" },
   { label: "보조금24", value: "subsidy24" },

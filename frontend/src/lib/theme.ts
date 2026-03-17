@@ -29,7 +29,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   smes:     "중소벤처24",
 };
 
-export const SOURCE_KEYS = ["bizinfo", "kocca", "kstartup", "subsidy24", "smes"] as const;
+export const SOURCE_KEYS = ["kocca", "kstartup", "subsidy24", "smes"] as const;
 
 export const CHART_COLORS = [
   "#3b82f6", "#f97316", "#23A26D", "#8b5cf6", "#2D72D2",
