@@ -373,7 +373,8 @@ async def sync_eligibility_edges(
         if not grant.parsed_requirements:
             continue
         elig = compute_eligibility(profile, grant.parsed_requirements)
-        if elig.score is None or elig.score < threshold:
+        effective_score = elig.score if elig.score is not None else 100  # no restrictions = universally eligible
+        if effective_score < threshold:
             continue
 
         await run_query(
@@ -389,7 +390,7 @@ async def sync_eligibility_edges(
             {
                 "company_id": company_id,
                 "grant_id": str(grant.id),
-                "score": elig.score,
+                "score": effective_score,
                 "confidence": elig.confidence,
                 "pass_count": sum(1 for c in elig.checklist if c.status == "pass"),
                 "fail_count": sum(1 for c in elig.checklist if c.status == "fail"),
