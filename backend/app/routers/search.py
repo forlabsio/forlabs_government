@@ -11,19 +11,19 @@ Results are fused with Reciprocal Rank Fusion (RRF) before pagination.
 Each channel degrades gracefully when its dependency is unavailable.
 """
 
-import asyncio
 import logging
 import re
 import uuid
 
 from fastapi import APIRouter, Depends
+from datetime import date
+
 from sqlalchemy import case, literal, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.embedding import generate_embedding
-from app.graph import run_query
 from app.models import GrantProject, GrantSource, SearchLog
 from app.schemas import GrantListResponse, SearchRequest
 
@@ -153,40 +153,6 @@ async def _vector_search(
         return []
 
 
-# ── Channel 3: Graph search (Neo4j concept expansion) ─────────────────────────
-
-async def _graph_search(
-    keywords: list[str],
-    limit: int = 100,
-) -> list[str]:
-    """Return grant IDs reachable from TechArea / Agency nodes matching keywords.
-
-    This expands search concepts ontologically:
-      keyword "AI" → TechArea(인공지능) → all grants targeting that area
-      keyword "기업마당" → Agency(기업마당) → all grants managed by that agency
-    """
-    if not keywords:
-        return []
-
-    cypher = """
-    UNWIND $keywords AS kw
-    MATCH (n)
-    WHERE (n:TechArea OR n:Agency)
-      AND toLower(n.name) CONTAINS toLower(kw)
-    WITH DISTINCT n
-    MATCH (g:Grant)-[:MANAGED_BY|TARGETS_SECTOR]->(n)
-    RETURN DISTINCT g.id AS grant_id
-    LIMIT $lim
-    """
-
-    try:
-        records = await run_query(cypher, {"keywords": keywords, "lim": limit})
-        return [r["grant_id"] for r in records if r.get("grant_id")]
-    except Exception as e:
-        logger.warning("Graph search unavailable: %s", e)
-        return []
-
-
 # ── Reciprocal Rank Fusion ─────────────────────────────────────────────────────
 
 def _rrf_fusion(*ranked_lists: list[str], k: int = RRF_K) -> list[str]:
@@ -245,6 +211,67 @@ async def _apply_filters(
         return grant_ids  # return unfiltered rather than empty
 
 
+# ── Sort IDs by DB column ──────────────────────────────────────────────────────
+
+async def _sort_ids(
+    db: AsyncSession,
+    grant_ids: list[str],
+    sort: str,
+) -> list[str]:
+    """Re-sort a list of grant IDs by deadline or recency.
+
+    deadline: end_date ASC NULLS LAST (active-first; nulls = 상시 at end)
+    recent:   start_date DESC NULLS LAST, id ASC
+    """
+    try:
+        uuid_ids = [uuid.UUID(gid) for gid in grant_ids]
+    except ValueError:
+        return grant_ids
+
+    today = date.today()
+
+    if sort == "deadline":
+        q = (
+            select(GrantProject.id, GrantProject.end_date)
+            .where(GrantProject.id.in_(uuid_ids))
+        )
+        result = await db.execute(q)
+        rows = result.all()
+
+        def deadline_key(row: tuple) -> tuple:
+            d = row[1]  # end_date
+            gid = str(row[0])  # UUID as tiebreaker for deterministic pagination
+            if d is None:
+                return (2, date.max, gid)      # 상시 → 뒤로
+            if d < today:
+                return (1, d, gid)             # 마감된 것 → 가운데
+            return (0, d, gid)                 # 진행중 → 앞으로 (가까운 순)
+
+        sorted_rows = sorted(rows, key=deadline_key)
+        return [str(r[0]) for r in sorted_rows]
+
+    elif sort == "recent":
+        q = (
+            select(GrantProject.id, GrantProject.start_date)
+            .where(GrantProject.id.in_(uuid_ids))
+        )
+        result = await db.execute(q)
+        rows = result.all()
+
+        def recent_key(row: tuple) -> tuple:
+            d = row[1]  # start_date
+            gid = str(row[0])  # UUID as tiebreaker for deterministic pagination
+            # (null_last, -ordinal) → ascending sort gives newest first, NULLs last
+            if d is None:
+                return (1, 0, gid)
+            return (0, -d.toordinal(), gid)
+
+        sorted_rows = sorted(rows, key=recent_key)
+        return [str(r[0]) for r in sorted_rows]
+
+    return grant_ids
+
+
 # ── Main endpoint ──────────────────────────────────────────────────────────────
 
 @router.post("", response_model=GrantListResponse)
@@ -270,17 +297,10 @@ async def search_grants(
     """
     keywords = extract_keywords(body.query)
 
-    # ── Phase 1: external I/O in parallel ─────────────────────────────────────
-    embedding_result, graph_result = await asyncio.gather(
-        generate_embedding(body.query),
-        _graph_search(keywords),
-        return_exceptions=True,
-    )
+    # ── Phase 1: embedding (external I/O) ─────────────────────────────────────
+    embedding_result = await generate_embedding(body.query)
     embedding: list[float] | None = (
         embedding_result if isinstance(embedding_result, list) else None
-    )
-    graph_ids: list[str] = (
-        graph_result if isinstance(graph_result, list) else []
     )
 
     # ── Phase 2: DB searches ───────────────────────────────────────────────────
@@ -288,8 +308,12 @@ async def search_grants(
     vec_ids = await _vector_search(db, embedding)
 
     # ── Phase 3: fusion, filter, paginate ─────────────────────────────────────
-    fused_ids = _rrf_fusion(kw_ids, vec_ids, graph_ids)
+    fused_ids = _rrf_fusion(kw_ids, vec_ids)
     filtered_ids = await _apply_filters(db, fused_ids, body)
+
+    # Re-sort if requested (overrides RRF relevance order)
+    if body.sort in ("deadline", "recent") and filtered_ids:
+        filtered_ids = await _sort_ids(db, filtered_ids, body.sort)
 
     total = len(filtered_ids)
     offset = (body.page - 1) * body.page_size
@@ -349,7 +373,6 @@ async def search_grants(
                 "channels": {
                     "keyword": len(kw_ids),
                     "vector": len(vec_ids),
-                    "graph": len(graph_ids),
                 },
             }.items()
             if v is not None

@@ -15,9 +15,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Danbi.Day — 정부 R&D Knowledge Graph",
+  title: "Danbi — 정부 R&D 데이터 인텔리전스",
   description:
     "과제·기관·기술분야 관계를 시각화하는 데이터 인텔리전스 플랫폼",
+  icons: {
+    icon: [
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -3,15 +3,6 @@
 import { useState, useEffect } from "react";
 import { fetchDashboard, triggerCollect } from "@/lib/api";
 
-async function syncGraph(token: string) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const res = await fetch(`${API_URL}/api/admin/sync-graph`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-  });
-  if (!res.ok) throw new Error("Failed to sync graph");
-  return res.json();
-}
 import { FOUNDRY } from "@/lib/theme";
 import {
   Briefcase,
@@ -119,8 +110,6 @@ export default function AdminDashboardPage() {
     fetch_logs_today: [],
   });
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ grants_synced: number; companies_synced: number; eligibility_edges: number } | null>(null);
   const [collecting, setCollecting] = useState(false);
 
   useEffect(() => {
@@ -139,21 +128,6 @@ export default function AdminDashboardPage() {
     }
     load();
   }, []);
-
-  async function handleSyncGraph() {
-    const token = localStorage.getItem("govgrants_token");
-    if (!token) return;
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const result = await syncGraph(token);
-      setSyncResult(result);
-    } catch {
-      alert("Neo4j 동기화 실패");
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   async function handleCollect() {
     const token = localStorage.getItem("govgrants_token");
@@ -198,49 +172,8 @@ export default function AdminDashboardPage() {
             <RefreshCw size={13} />
             {collecting ? "수집 중..." : "과제 수집"}
           </button>
-          <button
-            onClick={handleSyncGraph}
-            disabled={syncing}
-            style={{
-              background: syncing ? "rgba(22,119,255,0.15)" : FOUNDRY.primary,
-              border: "none",
-              color: "#fff",
-              borderRadius: 8,
-              padding: "8px 16px",
-              fontSize: 13,
-              cursor: syncing ? "not-allowed" : "pointer",
-              opacity: syncing ? 0.7 : 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontWeight: 600,
-            }}
-          >
-            <RefreshCw size={13} style={{ animation: syncing ? "spin 1s linear infinite" : "none" }} />
-            {syncing ? "동기화 중..." : "Neo4j 동기화"}
-          </button>
         </div>
       </div>
-      {syncResult && (
-        <div style={{
-          marginBottom: 20,
-          borderRadius: 8,
-          border: `1px solid rgba(35,162,109,0.3)`,
-          background: "rgba(35,162,109,0.08)",
-          padding: "12px 18px",
-          display: "flex",
-          gap: 24,
-          alignItems: "center",
-          fontSize: 13,
-          color: FOUNDRY.text,
-        }}>
-          <CheckCircle2 size={16} color={FOUNDRY.success} />
-          <span>Neo4j 동기화 완료 —</span>
-          <span>과제 <strong style={{ color: FOUNDRY.success }}>{syncResult.grants_synced}</strong>건</span>
-          <span>기업 <strong style={{ color: FOUNDRY.primary }}>{syncResult.companies_synced}</strong>개</span>
-          <span>적격성 엣지 <strong style={{ color: "#8b5cf6" }}>{syncResult.eligibility_edges}</strong>개</span>
-        </div>
-      )}
 
       {/* Stat Cards */}
       <div

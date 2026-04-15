@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.graph import run_query
 from app.models import GrantProject, User
 from app.schemas import GrantListItem, MatchRequest
 from app.services.eligibility import compute_eligibility
@@ -61,232 +60,6 @@ async def recommend_grants(
     return {"items": items, "total": len(items)}
 
 
-# ── 2. Graph Nodes ──────────────────────────────────────────────────────────
-
-@router.get("/graph/nodes")
-async def get_graph_nodes(
-    limit: int = Query(100, ge=10, le=500),
-):
-    """Return graph nodes and edges for Cytoscape.js visualization."""
-    try:
-        grants_result = await run_query(
-            """
-            MATCH (g:Grant)
-            WHERE g.status = '접수중'
-            RETURN g.id AS id, g.title AS title, g.category AS category,
-                   g.organization AS organization, 'Grant' AS type
-            LIMIT $limit
-            """,
-            {"limit": limit},
-        )
-
-        agencies_result = await run_query(
-            """
-            MATCH (g:Grant)-[:MANAGED_BY]->(a:Agency)
-            WHERE g.status = '접수중'
-            RETURN DISTINCT a.id AS id, a.name AS name, 'Agency' AS type
-            LIMIT 50
-            """
-        )
-
-        tech_result = await run_query(
-            """
-            MATCH (t:TechArea)<-[:TARGETS_SECTOR]-(g:Grant)
-            WHERE g.status = '접수중'
-            RETURN DISTINCT t.id AS id, t.name AS name, 'TechArea' AS type
-            """
-        )
-
-        edges_result = await run_query(
-            """
-            MATCH (g:Grant)-[r]->(n)
-            WHERE g.status = '접수중' AND type(r) IN ['MANAGED_BY', 'TARGETS_SECTOR']
-            RETURN g.id AS source, n.id AS target, type(r) AS rel_type
-            LIMIT $limit
-            """,
-            {"limit": limit * 2},
-        )
-
-    except Exception as e:
-        logger.warning(f"Neo4j query failed, returning empty graph: {e}")
-        return {"nodes": [], "edges": []}
-
-    nodes = []
-    for g in grants_result:
-        nodes.append({
-            "data": {
-                "id": g["id"], "label": g["title"][:30],
-                "type": "Grant", "category": g.get("category", ""),
-                "organization": g.get("organization", ""),
-            }
-        })
-    for a in agencies_result:
-        nodes.append({
-            "data": {"id": a["id"], "label": a["name"], "type": "Agency"}
-        })
-    for t in tech_result:
-        nodes.append({
-            "data": {"id": t["id"], "label": t["name"], "type": "TechArea"}
-        })
-
-    edges = [
-        {"data": {"source": e["source"], "target": e["target"], "rel": e["rel_type"]}}
-        for e in edges_result
-    ]
-
-    return {"nodes": nodes, "edges": edges}
-
-
-@router.get("/graph/overview")
-async def get_graph_overview():
-    """Overview: all Agencies + TechAreas with aggregated stats. 1,000 grants all included."""
-    try:
-        agencies_result = await run_query("""
-            MATCH (g:Grant)-[:MANAGED_BY]->(a:Agency)
-            WHERE g.status = '접수중'
-            WITH a, count(g) AS grant_count, sum(coalesce(g.amount_max, 0)) AS total_amount
-            RETURN a.id AS id, a.name AS name, 'Agency' AS type,
-                   grant_count, total_amount
-            ORDER BY grant_count DESC
-        """)
-        tech_result = await run_query("""
-            MATCH (g:Grant)-[:TARGETS_SECTOR]->(t:TechArea)
-            WHERE g.status = '접수중'
-            WITH t, count(g) AS grant_count, sum(coalesce(g.amount_max, 0)) AS total_amount
-            RETURN t.id AS id, t.name AS name, 'TechArea' AS type,
-                   grant_count, total_amount
-            ORDER BY total_amount DESC
-        """)
-        edges_result = await run_query("""
-            MATCH (a:Agency)<-[:MANAGED_BY]-(g:Grant)-[:TARGETS_SECTOR]->(t:TechArea)
-            WHERE g.status = '접수중'
-            WITH a, t, count(g) AS shared
-            RETURN a.id AS source, t.id AS target, shared AS weight
-            ORDER BY shared DESC
-        """)
-    except Exception as e:
-        logger.warning(f"Neo4j overview query failed: {e}")
-        return {"nodes": [], "edges": []}
-
-    max_agency = max([a.get("grant_count", 1) for a in agencies_result] or [1])
-    max_tech_amt = max([(t.get("total_amount") or 0) for t in tech_result] or [1]) or 0
-    max_tech_cnt = max([t.get("grant_count", 1) for t in tech_result] or [1])
-
-    nodes = []
-    for a in agencies_result:
-        nodes.append({"data": {
-            "id": a["id"], "label": a["name"], "type": "Agency",
-            "grant_count": a["grant_count"],
-            "total_amount": int(a.get("total_amount") or 0),
-            "weight": a["grant_count"] / max_agency,
-        }})
-    for t in tech_result:
-        amt = t.get("total_amount") or 0
-        # fall back to grant_count-based weight when amount data is missing
-        weight = (amt / max_tech_amt) if max_tech_amt > 0 else (t["grant_count"] / max_tech_cnt)
-        nodes.append({"data": {
-            "id": t["id"], "label": t["name"], "type": "TechArea",
-            "grant_count": t["grant_count"],
-            "total_amount": int(amt),
-            "weight": weight,
-        }})
-
-    edges = [
-        {"data": {"source": e["source"], "target": e["target"], "weight": e["weight"], "rel": "SHARED_GRANTS"}}
-        for e in edges_result
-    ]
-    return {"nodes": nodes, "edges": edges}
-
-
-@router.get("/graph/expand/{node_id:path}")
-async def expand_graph_node(node_id: str):
-    """Drilldown: returns all grants connected to a specific Agency or TechArea."""
-    is_agency = node_id.startswith("agency_")
-    try:
-        if is_agency:
-            grants_result = await run_query("""
-                MATCH (g:Grant)-[:MANAGED_BY]->(a:Agency {id: $node_id})
-                WHERE g.status = '접수중'
-                RETURN g.id AS id, g.title AS title, g.category AS category,
-                       g.organization AS organization, g.amount_max AS amount_max,
-                       g.end_date AS end_date, 'Grant' AS type
-                ORDER BY g.amount_max DESC
-            """, {"node_id": node_id})
-            hub_result = await run_query(
-                "MATCH (a:Agency {id: $id}) RETURN a.name AS name", {"id": node_id}
-            )
-            hub_type = "Agency"
-        else:
-            grants_result = await run_query("""
-                MATCH (g:Grant)-[:TARGETS_SECTOR]->(t:TechArea {id: $node_id})
-                WHERE g.status = '접수중'
-                RETURN g.id AS id, g.title AS title, g.category AS category,
-                       g.organization AS organization, g.amount_max AS amount_max,
-                       g.end_date AS end_date, 'Grant' AS type
-                ORDER BY g.amount_max DESC
-            """, {"node_id": node_id})
-            hub_result = await run_query(
-                "MATCH (t:TechArea {id: $id}) RETURN t.name AS name", {"id": node_id}
-            )
-            hub_type = "TechArea"
-    except Exception as e:
-        logger.warning(f"Neo4j expand query failed: {e}")
-        return {"nodes": [], "edges": [], "hub": {"id": node_id, "label": node_id, "type": "Agency", "grant_count": 0}}
-
-    hub_label = hub_result[0]["name"] if hub_result else node_id
-    max_amount = max([(g.get("amount_max") or 0) for g in grants_result] or [1]) or 1
-
-    nodes = [{"data": {
-        "id": node_id, "label": hub_label, "type": hub_type,
-        "is_hub": True, "grant_count": len(grants_result), "weight": 1.0,
-    }}]
-    for g in grants_result:
-        nodes.append({"data": {
-            "id": g["id"], "label": g["title"], "type": "Grant",
-            "category": g.get("category"),
-            "organization": g.get("organization"),
-            "amount_max": g.get("amount_max"),
-            "end_date": str(g.get("end_date")) if g.get("end_date") else None,
-            "weight": (g.get("amount_max") or 0) / max_amount,
-        }})
-
-    edges = [
-        {"data": {"source": node_id, "target": g["id"],
-                  "rel": "MANAGED_BY" if is_agency else "TARGETS_SECTOR"}}
-        for g in grants_result
-    ]
-    return {
-        "nodes": nodes, "edges": edges,
-        "hub": {"id": node_id, "label": hub_label, "type": hub_type, "grant_count": len(grants_result)},
-    }
-
-
-@router.get("/graph/node/{node_id}")
-async def get_node_detail(node_id: str):
-    """Return a specific node with its neighbors."""
-    try:
-        result = await run_query(
-            """
-            MATCH (n {id: $id})
-            OPTIONAL MATCH (n)-[r]-(neighbor)
-            RETURN n, collect({
-                id: neighbor.id,
-                label: coalesce(neighbor.title, neighbor.name),
-                type: labels(neighbor)[0],
-                rel: type(r)
-            }) AS neighbors
-            """,
-            {"id": node_id},
-        )
-    except Exception as e:
-        logger.warning(f"Neo4j node detail failed: {e}")
-        return {"error": "Neo4j not configured"}
-
-    if not result:
-        return {"error": "Node not found"}
-    return result[0]
-
-
 # ── 3. Trends ───────────────────────────────────────────────────────────────
 
 @router.get("/trends")
@@ -294,9 +67,56 @@ async def get_trends(
     months: int = Query(6, ge=1, le=24),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return grant trend data grouped by month and category."""
-    result = await db.execute(
-        text("""
+    """Return rich trend intelligence data for the Trends Analysis page."""
+
+    # 1. Sector budget leaderboard — category by total funding KRW (LIVE grants)
+    sector_rows = await db.execute(text("""
+        SELECT
+            category,
+            COUNT(*) AS grant_count,
+            SUM(COALESCE(amount_max, 0)) AS total_amount_krw,
+            AVG(COALESCE(amount_max, 0)) AS avg_amount_krw
+        FROM grant_projects
+        WHERE status IN ('접수중', '공고중', '진행중')
+          AND category IS NOT NULL
+        GROUP BY category
+        ORDER BY total_amount_krw DESC
+        LIMIT 12
+    """))
+    sector_rows = sector_rows.fetchall()
+
+    # 2. Monthly new announcement velocity (last 16 weeks by week)
+    velocity_rows = await db.execute(text("""
+        SELECT
+            DATE_TRUNC('week', created_at) AS week,
+            COUNT(*) AS count
+        FROM grant_projects
+        WHERE created_at >= NOW() - INTERVAL '16 weeks'
+        GROUP BY DATE_TRUNC('week', created_at)
+        ORDER BY week ASC
+    """))
+    velocity_rows = velocity_rows.fetchall()
+
+    # 3. High-value grants closing soon (deadline within 90 days, amount > 0)
+    closing_rows = await db.execute(text("""
+        SELECT
+            id, title, organization, category,
+            COALESCE(amount_max, 0) AS amount_max,
+            end_date,
+            (end_date - CURRENT_DATE) AS days_left
+        FROM grant_projects
+        WHERE status IN ('접수중', '공고중', '진행중')
+          AND end_date IS NOT NULL
+          AND end_date >= CURRENT_DATE
+          AND end_date <= CURRENT_DATE + INTERVAL '90 days'
+          AND COALESCE(amount_max, 0) > 0
+        ORDER BY amount_max DESC
+        LIMIT 10
+    """))
+    closing_rows = closing_rows.fetchall()
+
+    # 4. Monthly category trend (count over time) for sparklines
+    trend_result = await db.execute(text("""
         SELECT
             DATE_TRUNC('month', created_at) AS month,
             category,
@@ -307,40 +127,36 @@ async def get_trends(
           AND category IS NOT NULL
         GROUP BY DATE_TRUNC('month', created_at), category
         ORDER BY month ASC
-        """),
-        {"months": months},
-    )
-    rows = result.fetchall()
+    """), {"months": months})
+    trend_rows = trend_result.fetchall()
 
-    agency_result = await db.execute(
-        text("""
-        SELECT organization, COUNT(*) as count
+    # 5. Agency budget power ranking (total amount of LIVE grants)
+    agency_rows = await db.execute(text("""
+        SELECT
+            organization,
+            COUNT(*) AS grant_count,
+            SUM(COALESCE(amount_max, 0)) AS total_amount_krw
         FROM grant_projects
-        WHERE status = '접수중' AND organization IS NOT NULL
+        WHERE status IN ('접수중', '공고중', '진행중')
+          AND organization IS NOT NULL
+          AND COALESCE(amount_max, 0) > 0
         GROUP BY organization
-        ORDER BY count DESC
-        LIMIT 15
-        """)
-    )
+        ORDER BY total_amount_krw DESC
+        LIMIT 12
+    """))
+    agency_rows = agency_rows.fetchall()
 
+    # Build chart_data for backward compat
     trend_data: dict = {}
-    for row in rows:
+    for row in trend_rows:
         month_str = row.month.strftime("%Y-%m") if row.month else "unknown"
         if month_str not in trend_data:
             trend_data[month_str] = {}
-        trend_data[month_str][row.category] = {
-            "count": row.count,
-            "total_amount": int(row.total_amount or 0),
-        }
-
-    agencies = [
-        {"name": r.organization, "count": r.count}
-        for r in agency_result.fetchall()
-    ]
+        trend_data[month_str][row.category] = {"count": row.count}
 
     categories: set = set()
-    for month_data in trend_data.values():
-        categories.update(month_data.keys())
+    for md in trend_data.values():
+        categories.update(md.keys())
 
     chart_data = []
     for month, data in sorted(trend_data.items()):
@@ -350,9 +166,48 @@ async def get_trends(
         chart_data.append(entry)
 
     return {
+        # Legacy fields (kept for chart_data/categories consumers)
         "chart_data": chart_data,
         "categories": list(categories),
-        "agencies": agencies,
+        "agencies": [{"name": r.organization, "count": r.grant_count} for r in agency_rows],
+
+        # New intelligence fields
+        "sector_leaderboard": [
+            {
+                "category": r.category,
+                "grant_count": r.grant_count,
+                "total_amount_krw": int(r.total_amount_krw or 0),
+                "avg_amount_krw": int(r.avg_amount_krw or 0),
+            }
+            for r in sector_rows
+        ],
+        "weekly_velocity": [
+            {
+                "week": row.week.strftime("%m/%d") if row.week else "",
+                "count": row.count,
+            }
+            for row in velocity_rows
+        ],
+        "high_value_closing": [
+            {
+                "id": str(row.id),
+                "title": row.title,
+                "organization": row.organization or "",
+                "category": row.category or "",
+                "amount_max": int(row.amount_max or 0),
+                "end_date": row.end_date.isoformat() if row.end_date else "",
+                "days_left": int(row.days_left.days) if hasattr(row.days_left, "days") else int(row.days_left or 0),
+            }
+            for row in closing_rows
+        ],
+        "agency_budget": [
+            {
+                "name": r.organization,
+                "grant_count": r.grant_count,
+                "total_amount_krw": int(r.total_amount_krw or 0),
+            }
+            for r in agency_rows
+        ],
     }
 
 
@@ -541,42 +396,8 @@ async def auto_match(
         if filters_used else f"{len(top_grants)}개 과제 매칭"
     )
 
-    # ── 4. Build Cytoscape graph (company → industry → top grants) ─────────
-    from app.sync_graph import KSIC_CATEGORIES
-    tech_info = KSIC_CATEGORIES.get(industry)
-    tech_id = tech_info["id"] if tech_info else None
-
-    company_node = {
-        "data": {"id": "company_input", "label": industry or "내 기업", "type": "Company"}
-    }
-    tech_node = (
-        {"data": {"id": tech_id, "label": tech_info["name"] if tech_info else industry, "type": "TechArea"}}
-        if tech_id else None
-    )
-
-    cy_nodes = [company_node]
-    cy_edges = []
-    if tech_node:
-        cy_nodes.append(tech_node)
-        cy_edges.append({"data": {"source": "company_input", "target": tech_id, "rel": "IN_SECTOR"}})
-
-    for r in top_grants[:10]:
-        cy_nodes.append({
-            "data": {
-                "id": r["grant_id"], "label": r["title"][:25],
-                "type": "Grant", "amount_max": r.get("amount_max"),
-            }
-        })
-        if tech_id:
-            cy_edges.append({
-                "data": {
-                    "source": tech_id, "target": r["grant_id"], "rel": "TARGETS_SECTOR"
-                }
-            })
-
     return {
         "matched_grants": top_grants,
-        "graph": {"nodes": cy_nodes, "edges": cy_edges},
         "match_reason": match_reason,
     }
 
@@ -587,59 +408,68 @@ async def auto_match(
 async def get_company_network(
     db: AsyncSession = Depends(get_db),
 ):
-    """Return company co-interest network for Cytoscape.js."""
+    """Return anonymized industry-region cluster network for Cytoscape.js.
+
+    Privacy: no individual company names or user IDs are exposed.
+    Each node = (industry, region) cluster; edges = clusters sharing bookmark interest.
+    """
     result = await db.execute(
         text("""
         SELECT
-            u.id AS user_id,
-            u.company_name,
-            u.industry,
-            u.region,
-            array_agg(b.grant_id) AS grant_ids
+            COALESCE(u.industry, '미분류') AS industry,
+            COALESCE(u.region, '전국') AS region,
+            COUNT(DISTINCT u.id) AS company_count,
+            array_agg(DISTINCT b.grant_id) AS grant_ids
         FROM users u
         JOIN user_bookmarks b ON b.user_id = u.id
-        WHERE u.company_name IS NOT NULL
-        GROUP BY u.id, u.company_name, u.industry, u.region
-        HAVING COUNT(b.grant_id) > 0
-        LIMIT 100
+        GROUP BY COALESCE(u.industry, '미분류'), COALESCE(u.region, '전국')
+        HAVING COUNT(DISTINCT u.id) >= 1
         """)
     )
     rows = result.fetchall()
 
-    grant_to_companies: dict = defaultdict(list)
-    company_nodes = []
+    # Build cluster nodes — no individual company info
+    grant_to_clusters: dict = defaultdict(list)
+    cluster_nodes = []
 
     for row in rows:
-        company_nodes.append({
+        cluster_id = f"{row.industry}__{row.region}"
+        company_count = row.company_count or 0
+        cluster_nodes.append({
             "data": {
-                "id": str(row.user_id),
-                "label": row.company_name,
-                "industry": row.industry or "미분류",
-                "region": row.region or "전국",
-                "type": "Company",
-                "bookmark_count": len(row.grant_ids) if row.grant_ids else 0,
+                "id": cluster_id,
+                "label": f"{row.industry} · {row.region}",
+                "industry": row.industry,
+                "region": row.region,
+                "company_count": company_count,
+                "type": "Cluster",
+                # Size scales with company count (min 20, max 60)
+                "size": min(20 + company_count * 5, 60),
             }
         })
         for gid in (row.grant_ids or []):
-            grant_to_companies[str(gid)].append(str(row.user_id))
+            if gid:
+                grant_to_clusters[str(gid)].append(cluster_id)
 
-    edge_set: set = set()
-    for companies in grant_to_companies.values():
-        for i in range(len(companies)):
-            for j in range(i + 1, len(companies)):
-                edge_key = tuple(sorted([companies[i], companies[j]]))
-                edge_set.add(edge_key)
+    # Edges between clusters that share bookmarked grants
+    edge_weights: dict = defaultdict(int)
+    for clusters in grant_to_clusters.values():
+        for i in range(len(clusters)):
+            for j in range(i + 1, len(clusters)):
+                edge_key = tuple(sorted([clusters[i], clusters[j]]))
+                edge_weights[edge_key] += 1
 
     edges = [
-        {"data": {"source": src, "target": tgt, "rel": "PEER_OF"}}
-        for src, tgt in list(edge_set)[:500]
+        {"data": {"source": src, "target": tgt, "rel": "SHARED_INTEREST", "weight": w}}
+        for (src, tgt), w in sorted(edge_weights.items(), key=lambda x: -x[1])[:300]
     ]
 
     return {
-        "nodes": company_nodes,
+        "nodes": cluster_nodes,
         "edges": edges,
         "stats": {
-            "company_count": len(company_nodes),
+            "company_count": sum(n["data"]["company_count"] for n in cluster_nodes),
             "edge_count": len(edges),
+            "cluster_count": len(cluster_nodes),
         },
     }

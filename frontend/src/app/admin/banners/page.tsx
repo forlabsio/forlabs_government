@@ -189,7 +189,7 @@ export default function BannersPage() {
                           rel="noopener noreferrer"
                           style={{ fontSize: 13, color: FOUNDRY.primary, textDecoration: "none" }}
                         >
-                          {banner.link_url.length > 40 ? banner.link_url.slice(0, 40) + "..." : banner.link_url}
+                          {(banner.link_url || "").length > 40 ? (banner.link_url || "").slice(0, 40) + "..." : (banner.link_url || "—")}
                         </a>
                       </td>
                       <td style={{ padding: "12px 16px", borderBottom: `1px solid ${FOUNDRY.border}` }}>

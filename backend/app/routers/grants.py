@@ -70,31 +70,32 @@ async def list_grants(
         query = query.where(GrantProject.status == status_filter)
         count_query = count_query.where(GrantProject.status == status_filter)
     if source:
-        query = query.join(GrantProject.sources).where(GrantSource.source == source)
-        count_query = (
-            count_query.join(GrantProject.sources).where(GrantSource.source == source)
-        )
+        # JOIN 대신 서브쿼리 — 한 과제가 여러 소스를 가질 때 중복 행 방지
+        source_subq = select(GrantSource.grant_id).where(GrantSource.source == source).scalar_subquery()
+        query = query.where(GrantProject.id.in_(source_subq))
+        count_query = count_query.where(GrantProject.id.in_(source_subq))
 
     # Active-only filter: shared by deadline and default sorts
     _active_filter = (GrantProject.end_date >= date.today()) | (GrantProject.end_date.is_(None))
 
-    # Sorting
+    # Sorting — 모든 정렬에 id를 타이브레이커로 추가해 페이지간 중복 방지
     if sort == "deadline":
-        # Active grants only, sorted by nearest deadline
         query = query.where(_active_filter)
         count_query = count_query.where(_active_filter)
-        query = query.order_by(GrantProject.end_date.asc().nullslast())
+        query = query.order_by(GrantProject.end_date.asc().nullslast(), GrantProject.id.asc())
     elif sort == "recent":
-        # All grants (including expired) sorted by newest first
-        query = query.order_by(GrantProject.created_at.desc().nullslast())
+        # 활성 과제만 — 마감된 과제가 최상단에 노출되지 않도록
+        query = query.where(_active_filter)
+        count_query = count_query.where(_active_filter)
+        # start_date = 실제 공고 게시일. created_at은 DB 등록 시각이라 배치 입력 시 동일한 값이 많음
+        query = query.order_by(GrantProject.start_date.desc().nullslast(), GrantProject.id.asc())
     elif sort == "amount":
-        # Highest amount first, nulls last
-        query = query.order_by(GrantProject.amount_max.desc().nullslast())
+        query = query.order_by(GrantProject.amount_max.desc().nullslast(), GrantProject.id.asc())
     else:
         # Default: active grants only, sorted by nearest deadline
         query = query.where(_active_filter)
         count_query = count_query.where(_active_filter)
-        query = query.order_by(GrantProject.end_date.asc().nullslast())
+        query = query.order_by(GrantProject.end_date.asc().nullslast(), GrantProject.id.asc())
 
     # Pagination
     offset = (page - 1) * page_size

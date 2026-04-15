@@ -79,12 +79,14 @@ class Subsidy24Collector(BaseCollector):
         # Application period
         deadline_str = raw.get("신청기한", "")
 
+        from app.utils.amount_parser import parse_amount_max
+        summary_text = summary[:2000] if summary else ""
         return {
             "title": raw.get("서비스명", ""),
-            "summary": summary[:2000] if summary else "",
+            "summary": summary_text,
             "category": "보조금",
             "amount_min": None,
-            "amount_max": None,
+            "amount_max": parse_amount_max(summary_text),
             "target_industry": [],
             "target_region": [],
             "target_age": None,

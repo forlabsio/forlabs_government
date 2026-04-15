@@ -54,6 +54,16 @@ Extraction notes:
 - unextracted_conditions: 위 필드로 표현할 수 없는 중요 요건(인증 필요, 특정 자격 요건 등)을 raw 텍스트로"""
 
 
+_anthropic_client: anthropic.AsyncAnthropic | None = None
+
+
+def _get_anthropic_client() -> anthropic.AsyncAnthropic:
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    return _anthropic_client
+
+
 async def parse_requirements(summary: str) -> dict | None:
     """
     Parse grant eligibility requirements from summary text.
@@ -67,7 +77,7 @@ async def parse_requirements(summary: str) -> dict | None:
         logger.warning("ANTHROPIC_API_KEY not set — skipping requirement parsing")
         return None
 
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = _get_anthropic_client()
 
     try:
         message = await client.messages.create(

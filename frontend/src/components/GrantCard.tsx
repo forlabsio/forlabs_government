@@ -113,14 +113,14 @@ export default function GrantCard({ grant }: GrantCardProps) {
           )}
           {grant.status && (
             <span style={{
-              background: grant.status === "접수중" ? "rgba(35,162,109,0.15)" : "rgba(255,255,255,0.06)",
-              color: grant.status === "접수중" ? FOUNDRY.success : FOUNDRY.muted,
+              background: ["접수중", "공고중", "진행중"].includes(grant.status ?? "") ? "rgba(35,162,109,0.15)" : "rgba(255,255,255,0.06)",
+              color: ["접수중", "공고중", "진행중"].includes(grant.status ?? "") ? FOUNDRY.success : FOUNDRY.muted,
               borderRadius: 100,
               padding: "3px 9px",
               fontSize: 11,
               fontWeight: 500,
             }}>
-              {grant.status}
+              {["접수중", "공고중", "진행중"].includes(grant.status ?? "") ? "LIVE" : grant.status}
             </span>
           )}
         </div>

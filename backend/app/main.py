@@ -15,21 +15,17 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.tasks import run_all_collectors
-    from app.graph import get_driver, close_driver
+    from app.tasks import run_all_collectors, send_daily_curation
 
-    # Warm up Neo4j driver (non-fatal if not configured)
-    if settings.neo4j_uri:
-        try:
-            get_driver()
-            logger.info("Neo4j driver initialized")
-        except Exception as e:
-            logger.warning(f"Neo4j driver init failed (non-fatal): {e}")
+    # One-time backfill: populate amount_max from summary text for existing grants
+    from app.tasks import backfill_amount_max
+    asyncio.create_task(backfill_amount_max())
 
     scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
     scheduler.add_job(run_all_collectors, CronTrigger(hour=10, minute=0), args=["10:00"], id="collect-10am")
     scheduler.add_job(run_all_collectors, CronTrigger(hour=14, minute=0), args=["14:00"], id="collect-2pm")
     scheduler.add_job(run_all_collectors, CronTrigger(hour=17, minute=0), args=["17:00"], id="collect-5pm")
+    scheduler.add_job(send_daily_curation, CronTrigger(hour=8, minute=0), id="daily-email-8am")
     scheduler.start()
     logger.info("APScheduler started with 3 jobs")
 
@@ -37,7 +33,6 @@ async def lifespan(app: FastAPI):
 
     scheduler.shutdown()
     logger.info("APScheduler shut down")
-    await close_driver()
 
 
 app = FastAPI(title="GovGrants API", version="0.1.0", lifespan=lifespan)

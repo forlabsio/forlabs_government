@@ -1,27 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { fetchMatchResult, type MatchResult } from "@/lib/api";
 import { FOUNDRY, INDUSTRY_OPTIONS, REGION_OPTIONS } from "@/lib/theme";
-import { Loader2, GitBranch } from "lucide-react";
-
-const KnowledgeGraph = dynamic(() => import("@/components/KnowledgeGraph"), {
-  ssr: false,
-  loading: () => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-      }}
-    >
-      <Loader2 size={24} style={{ color: FOUNDRY.muted }} className="animate-spin" />
-    </div>
-  ),
-});
+import { Loader2, Layers } from "lucide-react";
 
 const LABEL_STYLE: React.CSSProperties = {
   display: "block",
@@ -257,63 +240,10 @@ export default function MatchingPage() {
         </div>
       </div>
 
-      {/* ── Center Panel: Match Path Graph (flex: 1) ──────────────── */}
+      {/* ── Right Panel: Matched Grants (flex: 1) ───────────────────── */}
       <div
         style={{
           flex: 1,
-          background: FOUNDRY.bg,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {!result && !loading && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: 12,
-            }}
-          >
-            <GitBranch size={32} style={{ color: FOUNDRY.muted }} />
-            <p style={{ fontSize: 13, color: FOUNDRY.muted }}>
-              업종을 선택하고 매칭을 실행하세요
-            </p>
-          </div>
-        )}
-
-        {loading && !result && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: 12,
-            }}
-          >
-            <Loader2 size={28} style={{ color: FOUNDRY.primary }} className="animate-spin" />
-            <p style={{ fontSize: 13, color: FOUNDRY.muted }}>
-              Knowledge Graph를 탐색하는 중...
-            </p>
-          </div>
-        )}
-
-        {result && (
-          <div style={{ height: "100%", width: "100%" }}>
-            <KnowledgeGraph data={result.graph} />
-          </div>
-        )}
-      </div>
-
-      {/* ── Right Panel: Matched Grants (320px) ───────────────────── */}
-      <div
-        style={{
-          width: 320,
-          flexShrink: 0,
           background: FOUNDRY.sidebar,
           borderLeft: `1px solid ${FOUNDRY.border}`,
           overflowY: "auto",
@@ -332,7 +262,8 @@ export default function MatchingPage() {
             flexShrink: 0,
           }}
         >
-          <p style={SECTION_LABEL_STYLE as React.CSSProperties}>Matched Grants</p>
+          <Layers size={12} style={{ color: FOUNDRY.muted }} />
+          <p style={{ ...SECTION_LABEL_STYLE, margin: 0 } as React.CSSProperties}>Matched Grants</p>
           {result && (
             <span
               style={{
@@ -350,8 +281,7 @@ export default function MatchingPage() {
           )}
         </div>
 
-        {/* match_reason */}
-        {result?.match_reason && (
+        {result && result.match_reason && (
           <p
             style={{
               fontSize: 11,

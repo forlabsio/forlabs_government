@@ -4,11 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  GitBranch,
   LayoutDashboard,
   Search,
   TrendingUp,
-  Network,
   Zap,
   Database,
   Settings,
@@ -41,10 +39,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home", icon: LayoutDashboard, section: "MAIN" },
   { href: "/grants", label: "과제 탐색", icon: Search, section: "MAIN" },
-  { href: "/graph", label: "Knowledge Graph", icon: GitBranch, section: "INTELLIGENCE" },
-  { href: "/trends", label: "트렌드 분석", icon: TrendingUp, section: "INTELLIGENCE" },
-  { href: "/network", label: "기업 네트워크", icon: Network, section: "INTELLIGENCE" },
   { href: "/matching", label: "자동 매칭", icon: Zap, section: "INTELLIGENCE" },
+  { href: "/trends", label: "트렌드 분석", icon: TrendingUp, section: "INTELLIGENCE" },
+  { href: "/bookmarks", label: "북마크", icon: Bookmark, section: "MY" },
   { href: "#data-sources", label: "Data Sources", icon: Database, section: "DATA", isAction: true },
 ];
 
@@ -53,9 +50,7 @@ const NAV_ITEMS: NavItem[] = [
 const BREADCRUMB_MAP: Record<string, string> = {
   "/": "대시보드",
   "/grants": "과제 탐색",
-  "/graph": "Knowledge Graph",
   "/trends": "트렌드 분석",
-  "/network": "기업 네트워크",
   "/matching": "자동 매칭",
   "/admin": "관리자",
   "/mypage": "내 프로필",
@@ -78,7 +73,6 @@ const DATA_SOURCES = [
   { name: "KOCCA", status: "LIVE" },
   { name: "보조금24", status: "LIVE" },
   { name: "중소벤처24", status: "LIVE" },
-  { name: "Neo4j Graph", status: "CONNECTED" },
 ];
 
 function DataSourcesPanel({ onClose }: { onClose: () => void }) {
@@ -99,7 +93,7 @@ function DataSourcesPanel({ onClose }: { onClose: () => void }) {
       ref={panelRef}
       style={{
         position: "absolute",
-        left: 220,
+        left: 160,
         top: 40,
         width: 240,
         background: FOUNDRY.panel,
@@ -178,7 +172,7 @@ function DataSourcesPanel({ onClose }: { onClose: () => void }) {
 
 /* ─── Sidebar ────────────────────────────────────────────────────────── */
 
-const SECTIONS = ["MAIN", "INTELLIGENCE", "DATA"] as const;
+const SECTIONS = ["MAIN", "INTELLIGENCE", "MY", "DATA"] as const;
 
 function Sidebar({
   expanded,
@@ -203,8 +197,8 @@ function Sidebar({
     <div
       style={{
         position: "relative",
-        width: expanded ? 220 : 60,
-        minWidth: expanded ? 220 : 60,
+        width: expanded ? 160 : 60,
+        minWidth: expanded ? 160 : 60,
         background: FOUNDRY.sidebar,
         borderRight: `1px solid ${FOUNDRY.border}`,
         display: "flex",
@@ -470,9 +464,6 @@ function UserDropdown() {
           <DropdownLink href="/mypage" onClick={() => setOpen(false)} icon={User}>
             내 프로필
           </DropdownLink>
-          <DropdownLink href="/bookmarks" onClick={() => setOpen(false)} icon={Bookmark}>
-            북마크
-          </DropdownLink>
           {user.is_admin && (
             <DropdownLink href="/admin" onClick={() => setOpen(false)} icon={Shield}>
               관리자
@@ -575,20 +566,11 @@ function WorkspaceBar() {
     >
       {/* Left: Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: 44, minWidth: 44 }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            background: FOUNDRY.primary,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <GitBranch size={14} color="#fff" />
-        </div>
+        <img
+          src="/favicon.svg"
+          alt="Danbi"
+          style={{ width: 28, height: 28, flexShrink: 0 }}
+        />
         <span
           style={{
             fontSize: 13,
@@ -597,7 +579,7 @@ function WorkspaceBar() {
             whiteSpace: "nowrap",
           }}
         >
-          GovGraph
+          Danbi
         </span>
       </div>
 
@@ -612,7 +594,7 @@ function WorkspaceBar() {
           color: FOUNDRY.muted,
         }}
       >
-        <span style={{ color: FOUNDRY.muted }}>GovGraph</span>
+        <span style={{ color: FOUNDRY.muted }}>Danbi</span>
         <ChevronRight size={12} />
         <span style={{ color: FOUNDRY.text }}>{breadcrumb}</span>
       </div>

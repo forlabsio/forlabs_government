@@ -117,12 +117,14 @@ class KstartupCollector(BaseCollector):
         if detail_url and not detail_url.startswith("http"):
             detail_url = f"https://{detail_url}"
 
+        from app.utils.amount_parser import parse_amount_max
+        summary_text = summary[:2000] if summary else ""
         return {
             "title": raw.get("biz_pbanc_nm") or "",
-            "summary": summary[:2000] if summary else "",
+            "summary": summary_text,
             "category": self._map_category(biz_cls),
             "amount_min": None,
-            "amount_max": None,
+            "amount_max": parse_amount_max(summary_text),
             "target_industry": industries,
             "target_region": regions,
             "target_age": age_str or None,

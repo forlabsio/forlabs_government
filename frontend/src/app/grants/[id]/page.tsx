@@ -8,13 +8,13 @@ import GrantCard from "@/components/GrantCard";
 import { FOUNDRY, SOURCE_LABELS } from "@/lib/theme";
 import {
   ArrowLeft,
-  Bookmark,
   Calendar,
   Building2,
   MapPin,
   ExternalLink,
   Tag,
 } from "lucide-react";
+import BookmarkButton from "@/components/BookmarkButton";
 import { useAuth } from "@/components/AuthProvider";
 import type { CSSProperties } from "react";
 
@@ -349,29 +349,11 @@ export default function GrantDetailPage({
               </a>
             )}
             {user && (
-              <button
-                type="button"
-                onClick={handleToggleBookmark}
-                disabled={bookmarkLoading}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  background: isBookmarked ? FOUNDRY.glow : "transparent",
-                  border: `1px solid ${isBookmarked ? FOUNDRY.primary : FOUNDRY.border}`,
-                  color: isBookmarked ? FOUNDRY.primary : FOUNDRY.muted,
-                  borderRadius: 8,
-                  padding: "10px 20px",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: bookmarkLoading ? "not-allowed" : "pointer",
-                  opacity: bookmarkLoading ? 0.6 : 1,
-                  transition: "border-color 0.15s, color 0.15s, background 0.15s",
-                }}
-              >
-                <Bookmark size={14} fill={isBookmarked ? FOUNDRY.primary : "none"} />
-                {isBookmarked ? "관심 사업 저장됨" : "관심 사업"}
-              </button>
+              <BookmarkButton
+                isBookmarked={isBookmarked}
+                loading={bookmarkLoading}
+                onToggle={handleToggleBookmark}
+              />
             )}
           </div>
         </article>

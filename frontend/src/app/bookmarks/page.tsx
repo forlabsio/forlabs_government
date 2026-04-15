@@ -107,7 +107,7 @@ export default function BookmarksPage() {
   }).length;
 
   const activeCount = bookmarks.filter(
-    (g) => g.status === "접수중"
+    (g) => ["접수중", "공고중", "진행중"].includes(g.status ?? "")
   ).length;
 
   if (authLoading || loading) {
@@ -152,7 +152,7 @@ export default function BookmarksPage() {
               <span style={{ fontSize: 14, fontWeight: 700, color: F.text }}>{bookmarks.length}</span>
             </div>
             <div style={{ background: F.card, border: `1px solid ${F.border}`, borderRadius: 6, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, color: F.success }}>접수중</span>
+              <span style={{ fontSize: 11, color: F.success }}>LIVE</span>
               <span style={{ fontSize: 14, fontWeight: 700, color: F.success }}>{activeCount}</span>
             </div>
             <div style={{ background: F.card, border: `1px solid ${F.border}`, borderRadius: 6, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8 }}>

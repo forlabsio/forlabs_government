@@ -14,7 +14,15 @@ if "supabase" in _url:
     _ssl_ctx.verify_mode = ssl.CERT_NONE
     _connect_args["ssl"] = _ssl_ctx
 
-engine = create_async_engine(_url, echo=False, connect_args=_connect_args)
+engine = create_async_engine(
+    _url,
+    echo=False,
+    pool_size=5,
+    max_overflow=5,
+    pool_recycle=1800,   # 30분마다 연결 재생성 (Railway 유휴 연결 차단 방지)
+    pool_pre_ping=True,  # 끊긴 연결 자동 감지
+    connect_args=_connect_args,
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

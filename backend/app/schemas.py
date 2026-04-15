@@ -162,6 +162,7 @@ class SearchRequest(BaseModel):
     category: str | None = None
     region: str | None = None
     source: str | None = None
+    sort: str | None = None  # "deadline" | "recent" | None (RRF order)
     page: int = 1
     page_size: int = 20
 
@@ -185,6 +186,7 @@ class FetchLogResponse(BaseModel):
     status: str
     total_fetched: int = 0
     new_count: int = 0
+    updated_count: int = 0
     duplicate_count: int = 0
     error_message: str | None = None
     started_at: datetime | None = None

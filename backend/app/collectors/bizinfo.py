@@ -1,4 +1,7 @@
 # backend/app/collectors/bizinfo.py
+# DO NOT ADD TO collectors/registry.py
+# bizinfo.go.kr blocks non-Korean IPs (Railway AWS us-east-1).
+# Collector kept for local testing only.
 import logging
 import httpx
 from datetime import date
@@ -55,17 +58,24 @@ class BizinfoCollector(BaseCollector):
         start_date, end_date = self._parse_date_range(raw.get("reqstBeginEndDe", ""))
         status = self._determine_status(end_date)
 
-        # detail_url: 상대경로인 경우 절대경로로 변환
-        detail_url = raw.get("pblancUrl", "")
-        if detail_url and not detail_url.startswith("http"):
-            detail_url = f"https://www.bizinfo.go.kr{detail_url}"
+        # detail_url: 절대경로로 정규화
+        detail_url = (raw.get("pblancUrl", "") or "").strip()
+        if detail_url:
+            import re
+            # "https//..." 처럼 콜론 빠진 잘못된 프로토콜 수정
+            detail_url = re.sub(r'^(https?)//(?=[a-zA-Z])', r'\1://', detail_url)
+            # 상대경로인 경우 base URL 추가
+            if not detail_url.startswith(("http://", "https://")):
+                detail_url = f"https://www.bizinfo.go.kr{detail_url}"
 
+        from app.utils.amount_parser import parse_amount_max
+        summary_text = self._strip_html(raw.get("bsnsSumryCn", ""))
         return {
             "title": raw.get("pblancNm", ""),
-            "summary": self._strip_html(raw.get("bsnsSumryCn", "")),
+            "summary": summary_text,
             "category": self._map_category(raw.get("pldirSportRealmLclasCodeNm", "")),
             "amount_min": None,
-            "amount_max": None,
+            "amount_max": parse_amount_max(summary_text),
             "target_industry": [],
             "target_region": [raw.get("jrsdInsttNm", "")] if raw.get("jrsdInsttNm") else [],
             "target_age": None,

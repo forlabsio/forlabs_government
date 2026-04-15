@@ -3,6 +3,7 @@ import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,10 +59,11 @@ async def dashboard(
     )
     today_searches = today_searches_result.scalar() or 0
 
-    # Fetch logs today
+    # Fetch logs today (bizinfo removed: IP-blocked by Railway AWS)
     fetch_logs_result = await db.execute(
         select(FetchLog)
         .where(FetchLog.started_at >= today_start)
+        .where(FetchLog.source != "bizinfo")
         .order_by(FetchLog.started_at.desc())
     )
     fetch_logs = fetch_logs_result.scalars().all()
@@ -186,6 +188,71 @@ async def trigger_collect(admin: User = Depends(get_admin_user)):
     return {"message": "Collection triggered"}
 
 
+@router.post("/trigger-batch-parse")
+async def trigger_batch_parse(
+    limit: int = Query(500, ge=1, le=5000, description="한 번에 파싱할 최대 건수"),
+    admin: User = Depends(get_admin_user),
+):
+    """Active grants 중 parsed_requirements 없는 것을 Claude Haiku로 배치 파싱."""
+    import asyncio
+    from datetime import date as _date
+    from sqlalchemy import or_, select as _select, update as _update
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+    from app.config import settings
+    from app.models import GrantProject
+    from app.services.requirement_parser import parse_requirements
+
+    async def _run():
+        engine = create_async_engine(settings.async_database_url, echo=False)
+        Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        today = _date.today()
+
+        async with Session() as db:
+            result = await db.execute(
+                _select(GrantProject)
+                .where(
+                    GrantProject.parsed_requirements.is_(None),
+                    GrantProject.summary.isnot(None),
+                    GrantProject.status.in_(["접수중", "공고중", "진행중"]),
+                    or_(GrantProject.end_date >= today, GrantProject.end_date.is_(None)),
+                )
+                .order_by(GrantProject.created_at.desc())
+                .limit(limit)
+            )
+            grants = result.scalars().all()
+
+        sem = asyncio.Semaphore(3)
+
+        async def parse_one(g):
+            async with sem:
+                await asyncio.sleep(0.3)
+                parsed = await parse_requirements(g.summary or "")
+                return g.id, parsed
+
+        processed = 0
+        BATCH = 30
+        all_ids_parsed = await asyncio.gather(*[parse_one(g) for g in grants])
+
+        async with Session() as db:
+            for i in range(0, len(all_ids_parsed), BATCH):
+                chunk = all_ids_parsed[i:i + BATCH]
+                for gid, parsed in chunk:
+                    if parsed:
+                        await db.execute(
+                            _update(GrantProject)
+                            .where(GrantProject.id == gid)
+                            .values(parsed_requirements=parsed)
+                        )
+                        processed += 1
+                await db.commit()
+
+        import logging
+        logging.getLogger(__name__).info(f"batch-parse complete: {processed}/{len(grants)}")
+
+    asyncio.create_task(_run())
+    return {"message": f"Batch parse triggered (up to {limit} grants)"}
+
+
 # ── User Management ──────────────────────────────────────
 
 
@@ -273,19 +340,62 @@ async def delete_user(
     await db.commit()
 
 
-@router.post("/sync-graph")
-async def sync_graph_endpoint(
+class ResetPasswordBody(BaseModel):
+    new_password: str
+
+
+@router.patch("/users/{user_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_user_password(
+    user_id: uuid.UUID,
+    body: ResetPasswordBody,
+    _admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset a user's password. Requires admin."""
+    from passlib.context import CryptContext
+    pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 6 characters")
+    user.hashed_password = pwd_ctx.hash(body.new_password)
+    await db.commit()
+
+
+@router.post("/fix-bizinfo-urls")
+async def fix_bizinfo_urls(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
-    """Sync grants + companies + eligibility edges to Neo4j."""
-    from app.sync_graph import sync_all_companies, sync_all_eligibility, sync_all_grants
+    """Fix malformed bizinfo detail_url values in the database."""
+    import re
 
-    grants_synced = await sync_all_grants(db)
-    companies_synced = await sync_all_companies(db)
-    eligibility_edges = await sync_all_eligibility(db)
-    return {
-        "grants_synced": grants_synced,
-        "companies_synced": companies_synced,
-        "eligibility_edges": eligibility_edges,
-    }
+    result = await db.execute(
+        select(GrantProject).where(
+            GrantProject.detail_url.isnot(None),
+            GrantProject.detail_url.like("%bizinfo%"),
+        )
+    )
+    grants = result.scalars().all()
+
+    fixed = 0
+    for grant in grants:
+        original = grant.detail_url
+        url = original or ""
+        # Fix doubled URL: "https://www.bizinfo.go.krhttps//..." → "https://..."
+        url = re.sub(
+            r'^https://www\.bizinfo\.go\.kr(https?//)',
+            lambda m: m.group(1).replace("//", "://"),
+            url,
+        )
+        # Fix malformed protocol: "https//..." → "https://..."
+        url = re.sub(r'^(https?)//(?=[a-zA-Z])', r'\1://', url)
+        if url != original:
+            grant.detail_url = url
+            fixed += 1
+
+    await db.commit()
+    return {"checked": len(grants), "fixed": fixed}

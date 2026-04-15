@@ -60,6 +60,7 @@ export async function searchGrants(body: {
   category?: string;
   region?: string;
   source?: string;
+  sort?: string;
   page?: number;
   page_size?: number;
 }): Promise<SearchResponse> {
@@ -354,46 +355,32 @@ export async function deleteUser(token: string, userId: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete user");
 }
 
+export async function resetUserPassword(
+  token: string,
+  userId: string,
+  newPassword: string
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/users/${userId}/reset-password`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "비밀번호 초기화에 실패했습니다.");
+  }
+}
+
 // ─── Intelligence API ────────────────────────────────────
-
-export interface GraphNode {
-  data: {
-    id: string;
-    label: string;
-    type: "Grant" | "Agency" | "TechArea" | "Company";
-    category?: string;
-    organization?: string;
-    industry?: string;
-    bookmark_count?: number;
-    amount_max?: number;
-    // Overview/drilldown fields
-    grant_count?: number;
-    total_amount?: number;
-    weight?: number;
-    is_hub?: boolean;
-    end_date?: string;
-    // Computed for Cytoscape sizing
-    size?: number;
-  };
-}
-
-export interface GraphEdge {
-  data: { source: string; target: string; rel: string; weight?: number };
-}
-
-export interface GraphData {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-}
-
-export interface ExpandResult extends GraphData {
-  hub: { id: string; label: string; type: string; grant_count: number };
-}
 
 export interface TrendData {
   chart_data: Record<string, string | number>[];
   categories: string[];
   agencies: { name: string; count: number }[];
+  sector_leaderboard: { category: string; grant_count: number; total_amount_krw: number; avg_amount_krw: number }[];
+  weekly_velocity: { week: string; count: number }[];
+  high_value_closing: { id: string; title: string; organization: string; category: string; amount_max: number; end_date: string; days_left: number }[];
+  agency_budget: { name: string; grant_count: number; total_amount_krw: number }[];
 }
 
 export interface MatchResult {
@@ -415,7 +402,6 @@ export interface MatchResult {
     }>;
     eligibility_confidence?: "high" | "medium" | "low";
   }[];
-  graph: GraphData;
   match_reason: string;
 }
 
@@ -427,30 +413,6 @@ export async function fetchRecommendations(
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to fetch recommendations");
-  return res.json();
-}
-
-export async function fetchGraphData(limit = 100): Promise<GraphData> {
-  const res = await fetch(`${API_URL}/api/intelligence/graph/nodes?limit=${limit}`);
-  if (!res.ok) throw new Error("Failed to fetch graph data");
-  return res.json();
-}
-
-export async function fetchGraphOverview(): Promise<GraphData> {
-  const res = await fetch(`${API_URL}/api/intelligence/graph/overview`);
-  if (!res.ok) throw new Error("Failed to fetch graph overview");
-  return res.json();
-}
-
-export async function fetchGraphExpand(nodeId: string): Promise<ExpandResult> {
-  const res = await fetch(`${API_URL}/api/intelligence/graph/expand/${encodeURIComponent(nodeId)}`);
-  if (!res.ok) throw new Error("Failed to expand node");
-  return res.json();
-}
-
-export async function fetchNodeDetail(nodeId: string): Promise<unknown> {
-  const res = await fetch(`${API_URL}/api/intelligence/graph/node/${nodeId}`);
-  if (!res.ok) throw new Error("Failed to fetch node");
   return res.json();
 }
 
@@ -477,12 +439,6 @@ export async function fetchMatchResult(profile: {
     body: JSON.stringify(profile),
   });
   if (!res.ok) throw new Error("Failed to fetch match");
-  return res.json();
-}
-
-export async function fetchNetworkData(): Promise<GraphData & { stats: { company_count: number; edge_count: number } }> {
-  const res = await fetch(`${API_URL}/api/intelligence/network`);
-  if (!res.ok) throw new Error("Failed to fetch network");
   return res.json();
 }
 

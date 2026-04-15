@@ -35,8 +35,7 @@ const SOURCES = [
 
 const STATUSES = [
   { label: "전체 상태", value: "" },
-  { label: "접수중", value: "접수중" },
-  { label: "진행중", value: "진행중" },
+  { label: "LIVE", value: "접수중" },
   { label: "마감", value: "마감" },
 ];
 
@@ -233,6 +232,7 @@ function GrantListContent() {
           category: category || undefined,
           region: region || undefined,
           source: source || undefined,
+          sort: sort || undefined,
           page: currentPage,
           page_size: PAGE_SIZE,
         });
@@ -741,20 +741,15 @@ function GrantListContent() {
                       paddingLeft: 8,
                       fontSize: 11,
                       fontWeight: 500,
-                      color:
-                        grant.status === "접수중"
+                      color: ["접수중", "공고중", "진행중"].includes(grant.status ?? "")
                           ? FOUNDRY.success
-                          : grant.status === "진행중"
-                          ? FOUNDRY.primary
                           : FOUNDRY.muted,
                     }}
                   >
-                    {grant.status === "접수중" ? (
+                    {["접수중", "공고중", "진행중"].includes(grant.status ?? "") ? (
                       <>● LIVE</>
                     ) : grant.status === "마감" ? (
                       <>● 마감</>
-                    ) : grant.status === "진행중" ? (
-                      <>● 진행중</>
                     ) : grant.status ? (
                       grant.status
                     ) : (

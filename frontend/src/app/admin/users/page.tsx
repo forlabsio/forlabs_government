@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { fetchUsers, deleteUser, type UserInfo } from "@/lib/api";
+import { fetchUsers, deleteUser, resetUserPassword, type UserInfo } from "@/lib/api";
 import { FOUNDRY } from "@/lib/theme";
 import {
   Search,
   Trash2,
+  KeyRound,
   Mail,
   MailMinus,
   Bookmark,
@@ -74,6 +75,21 @@ export default function AdminUsersPage() {
       loadUsers();
     } catch {
       alert("삭제에 실패했습니다.");
+    }
+  }
+
+  async function handleResetPassword(userId: string, email: string) {
+    const newPw = prompt(`${email}\n새 비밀번호를 입력하세요 (6자 이상):`);
+    if (!newPw) return;
+    if (newPw.length < 6) {
+      alert("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+    try {
+      await resetUserPassword(token, userId, newPw);
+      alert(`${email} 비밀번호가 초기화되었습니다.`);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "비밀번호 초기화에 실패했습니다.");
     }
   }
 
@@ -206,30 +222,56 @@ export default function AdminUsersPage() {
                       {u.is_admin ? (
                         <span style={{ fontSize: 11, fontWeight: 600, color: FOUNDRY.primary }}>관리자</span>
                       ) : (
-                        <button
-                          onClick={() => handleDelete(u.id, u.email)}
-                          title="회원 삭제"
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            borderRadius: 6,
-                            padding: "5px",
-                            cursor: "pointer",
-                            color: FOUNDRY.muted,
-                            transition: "background 0.12s, color 0.12s",
-                            display: "inline-flex",
-                          }}
-                          onMouseEnter={e => {
-                            (e.currentTarget as HTMLElement).style.background = "rgba(194,48,48,0.15)";
-                            (e.currentTarget as HTMLElement).style.color = FOUNDRY.danger;
-                          }}
-                          onMouseLeave={e => {
-                            (e.currentTarget as HTMLElement).style.background = "transparent";
-                            (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div style={{ display: "inline-flex", gap: 4 }}>
+                          <button
+                            onClick={() => handleResetPassword(u.id, u.email)}
+                            title="비밀번호 초기화"
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              borderRadius: 6,
+                              padding: "5px",
+                              cursor: "pointer",
+                              color: FOUNDRY.muted,
+                              transition: "background 0.12s, color 0.12s",
+                              display: "inline-flex",
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.background = "rgba(59,130,246,0.15)";
+                              (e.currentTarget as HTMLElement).style.color = "#60a5fa";
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.background = "transparent";
+                              (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                            }}
+                          >
+                            <KeyRound size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(u.id, u.email)}
+                            title="회원 삭제"
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              borderRadius: 6,
+                              padding: "5px",
+                              cursor: "pointer",
+                              color: FOUNDRY.muted,
+                              transition: "background 0.12s, color 0.12s",
+                              display: "inline-flex",
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.background = "rgba(194,48,48,0.15)";
+                              (e.currentTarget as HTMLElement).style.color = FOUNDRY.danger;
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.background = "transparent";
+                              (e.currentTarget as HTMLElement).style.color = FOUNDRY.muted;
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

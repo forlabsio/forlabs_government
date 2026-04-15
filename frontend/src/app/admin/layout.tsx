@@ -34,7 +34,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading || !user?.is_admin) {
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: FOUNDRY.bg }}>
+        <span style={{ color: FOUNDRY.muted, fontSize: 13 }}>로딩 중...</span>
+      </div>
+    );
+  }
+
+  if (!user?.is_admin) {
     return null;
   }
 

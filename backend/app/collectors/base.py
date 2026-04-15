@@ -93,12 +93,6 @@ class BaseCollector(ABC):
                         source_id=source_id, raw_data=raw,
                     ))
                     log.new_count += 1
-                    # Auto-sync new grant to Neo4j (non-blocking)
-                    try:
-                        from app.sync_graph import sync_grant_to_neo4j
-                        await sync_grant_to_neo4j(grant)
-                    except Exception as e:
-                        logger.debug("Neo4j sync skipped for grant %s: %s", grant.id, e)
 
             log.status = "success"
         except Exception as e:

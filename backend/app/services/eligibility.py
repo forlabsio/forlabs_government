@@ -7,8 +7,12 @@ Unknown checks (missing data on either side) excluded from denominator.
 """
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass, field
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 
 METROPOLITAN_REGIONS: set[str] = {"서울", "경기", "인천"}
@@ -38,8 +42,9 @@ def _to_int(v) -> int | None:
                 return int(v[key])
         return None
     if isinstance(v, str):
-        import re
         m = re.search(r"\d+", v)
+        if not m:
+            logger.debug("_to_int: no digits found in %r — treating as no restriction", v)
         return int(m.group()) if m else None
     return None
 
@@ -97,6 +102,13 @@ def compute_eligibility(
     """
     checklist: list[CheckItem] = []
 
+    # Sanitize list fields upfront — Claude API sometimes returns [None, "value"] or non-string types
+    def _clean_list(key: str) -> list[str]:
+        raw = parsed_requirements.get(key) or []
+        if isinstance(raw, str):
+            return [raw] if raw else []
+        return [x for x in raw if isinstance(x, str) and x]
+
     # 1. Company age check
     user_age = _to_int(profile.get("company_age"))
     max_age = _to_int(parsed_requirements.get("max_company_age_years"))
@@ -129,7 +141,7 @@ def compute_eligibility(
 
     # 2. Industry check
     user_industry = profile.get("industry")
-    allowed_industries = parsed_requirements.get("allowed_industries") or []
+    allowed_industries = _clean_list("allowed_industries")
 
     if allowed_industries:
         if user_industry:
@@ -148,7 +160,7 @@ def compute_eligibility(
 
     # 3. Region check
     user_region = profile.get("region")
-    allowed_regions = parsed_requirements.get("allowed_regions") or []
+    allowed_regions = _clean_list("allowed_regions")
 
     if allowed_regions:
         if user_region:
@@ -216,7 +228,7 @@ def compute_eligibility(
 
     # 6. Excluded industry check
     user_industry2 = profile.get("industry")
-    excluded_industries = parsed_requirements.get("excluded_industries") or []
+    excluded_industries = _clean_list("excluded_industries")
 
     if excluded_industries and user_industry2:
         is_excluded = _industry_matches(user_industry2, excluded_industries)
@@ -350,7 +362,7 @@ def compute_eligibility(
         "벤처": "벤처기업",
     }
     user_certs: list[str] = profile.get("certifications") or []
-    unextracted_for_cert = parsed_requirements.get("unextracted_conditions") or []
+    unextracted_for_cert = _clean_list("unextracted_conditions")
     for condition in unextracted_for_cert:
         for keyword, cert_name in CERT_KEYWORDS.items():
             if keyword in condition and "필수" in condition:
@@ -363,7 +375,7 @@ def compute_eligibility(
                 break
 
     # 13. Unextracted conditions (always unknown — flag for manual review)
-    unextracted = parsed_requirements.get("unextracted_conditions") or []
+    unextracted = _clean_list("unextracted_conditions")
     for condition in unextracted[:3]:  # cap at 3 to avoid bloat
         checklist.append(CheckItem(
             field="manual_check",

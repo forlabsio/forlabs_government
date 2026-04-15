@@ -63,12 +63,13 @@ class KoccaCollector(BaseCollector):
         # Category from cate field
         cate = raw.get("cate") or ""
 
+        from app.utils.amount_parser import parse_amount_max
         return {
             "title": raw.get("title") or "",
             "summary": summary,
             "category": self._map_category(cate),
             "amount_min": None,
-            "amount_max": None,
+            "amount_max": parse_amount_max(summary),
             "target_industry": ["콘텐츠"],
             "target_region": [],
             "target_age": None,

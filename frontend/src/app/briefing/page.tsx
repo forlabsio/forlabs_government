@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchBriefing, type BriefingResponse } from "@/lib/api";
 import { FOUNDRY } from "@/lib/theme";
-import { Loader2, Share2, ExternalLink } from "lucide-react";
+import { Loader2, Share2, ExternalLink, ChevronLeft } from "lucide-react";
 
 const F = FOUNDRY;
 
@@ -130,6 +130,23 @@ export default function BriefingPage() {
       }}
     >
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "28px 32px" }}>
+        {/* Back */}
+        <Link
+          href="/"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 12,
+            color: F.muted,
+            textDecoration: "none",
+            marginBottom: 20,
+          }}
+        >
+          <ChevronLeft size={14} />
+          대시보드
+        </Link>
+
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div
