@@ -73,6 +73,9 @@ class UserResponse(BaseModel):
     email: str
     name: str | None = None
     is_admin: bool = False
+    role: str = "user"
+    organization_id: uuid.UUID | None = None
+    onboarding_completed: bool = False
     company_name: str | None = None
     industry: str | None = None
     company_age: int | None = None
@@ -253,6 +256,152 @@ class MatchRequest(BaseModel):
     certifications: list[str] = []
     is_corporate: bool | None = None
     is_venture: bool | None = None
+
+
+# ── Briefing Schemas ────────────────────────────────────────────
+
+
+# ── B2B2C Schemas ──────────────────────────────────────────────
+
+
+class OrganizationCreate(BaseModel):
+    name: str
+
+
+class OrganizationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    plan_type: str = "free"
+    owner_id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class InvitationCreate(BaseModel):
+    email: str
+
+
+class InvitationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class ClientInterestCreate(BaseModel):
+    grant_id: uuid.UUID
+    notes: str | None = None
+
+
+class PipelineTransition(BaseModel):
+    pipeline_status: str  # 관심|상담|신청|결과
+    result_type: str | None = None  # 선정|탈락|보류 (결과 시만)
+
+
+class ClientInterestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    user_id: uuid.UUID
+    grant_id: uuid.UUID
+    pipeline_status: str
+    result_type: str | None = None
+    eligibility_status: str | None = None
+    eligibility_detail: dict | None = None
+    notes: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ConsultingNoteCreate(BaseModel):
+    client_user_id: uuid.UUID
+    grant_id: uuid.UUID | None = None
+    content: str
+
+
+class ConsultingNoteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    consultant_id: uuid.UUID
+    client_user_id: uuid.UUID
+    grant_id: uuid.UUID | None = None
+    content: str
+    created_at: datetime | None = None
+
+
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    type: str
+    title: str
+    body: str | None = None
+    metadata_json: dict = {}
+    read_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class ClientSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    name: str | None = None
+    company_name: str | None = None
+    industry: str | None = None
+    region: str | None = None
+    onboarding_completed: bool = False
+    interest_count: int = 0
+
+
+class ClientActivityCreate(BaseModel):
+    activity_type: str  # meeting|call|email|visit|note|other
+    title: str
+    description: str | None = None
+    scheduled_at: datetime | None = None
+
+
+class ClientActivityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    consultant_id: uuid.UUID
+    client_user_id: uuid.UUID
+    activity_type: str
+    title: str
+    description: str | None = None
+    scheduled_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class ClientDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    email: str
+    name: str | None = None
+    company_name: str | None = None
+    industry: str | None = None
+    region: str | None = None
+    employee_count: int | None = None
+    revenue_krw: int | None = None
+    company_age: int | None = None
+    certifications: list[str] = []
+    is_corporate: bool = False
+    is_venture: bool = False
+    onboarding_completed: bool = False
+    created_at: datetime | None = None
+    interest_count: int = 0
+    activity_count: int = 0
+    note_count: int = 0
+
+
+class DashboardActivity(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    type: str
+    title: str
+    body: str | None = None
+    metadata_json: dict = {}
+    created_at: datetime | None = None
 
 
 # ── Briefing Schemas ────────────────────────────────────────────

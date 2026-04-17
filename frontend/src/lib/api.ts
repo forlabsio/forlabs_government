@@ -175,6 +175,9 @@ export interface UserInfo {
   email: string;
   name?: string;
   is_admin: boolean;
+  role: string;
+  organization_id?: string;
+  onboarding_completed: boolean;
   company_name?: string;
   industry?: string;
   company_age?: number;
@@ -478,4 +481,270 @@ export async function fetchBriefing(token: string): Promise<BriefingResponse> {
   });
   if (!res.ok) throw new Error("Failed to fetch briefing");
   return res.json();
+}
+
+// ─── B2B2C API ──────────────────────────────────────────
+
+export interface ClientSummary {
+  id: string;
+  email: string;
+  name?: string;
+  company_name?: string;
+  industry?: string;
+  region?: string;
+  onboarding_completed: boolean;
+  interest_count: number;
+}
+
+export interface ClientInterest {
+  id: string;
+  user_id: string;
+  grant_id: string;
+  pipeline_status: string;
+  result_type?: string;
+  eligibility_status?: string;
+  eligibility_detail?: { matched: string[]; missing: string[] };
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ConsultingNote {
+  id: string;
+  consultant_id: string;
+  client_user_id: string;
+  grant_id?: string;
+  content: string;
+  created_at?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body?: string;
+  metadata_json: Record<string, string>;
+  read_at?: string;
+  created_at?: string;
+}
+
+export interface DashboardActivity {
+  id: string;
+  type: string;
+  title: string;
+  body?: string;
+  metadata_json: Record<string, string>;
+  created_at?: string;
+}
+
+export async function createOrganization(token: string, name: string) {
+  const res = await fetch(`${API_URL}/api/organizations`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "조직 생성 실패");
+  return res.json();
+}
+
+export async function createInvitation(token: string, email: string) {
+  const res = await fetch(`${API_URL}/api/invitations`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "초대 실패");
+  return res.json();
+}
+
+export async function validateInviteToken(token: string) {
+  const res = await fetch(`${API_URL}/api/invitations/accept/${token}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "초대 검증 실패");
+  return res.json();
+}
+
+export async function acceptInvitation(token: string) {
+  const res = await fetch(`${API_URL}/api/invitations/accept/${token}`, { method: "POST" });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "초대 수락 실패");
+  return res.json();
+}
+
+export async function fetchClients(token: string): Promise<ClientSummary[]> {
+  const res = await fetch(`${API_URL}/api/clients`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch clients");
+  return res.json();
+}
+
+export interface ClientDetail {
+  id: string;
+  email: string;
+  name?: string;
+  company_name?: string;
+  industry?: string;
+  region?: string;
+  employee_count?: number;
+  revenue_krw?: number;
+  company_age?: number;
+  certifications: string[];
+  is_corporate: boolean;
+  is_venture: boolean;
+  onboarding_completed: boolean;
+  created_at?: string;
+  interest_count: number;
+  activity_count: number;
+  note_count: number;
+}
+
+export interface ClientActivityItem {
+  id: string;
+  consultant_id: string;
+  client_user_id: string;
+  activity_type: string;
+  title: string;
+  description?: string;
+  scheduled_at?: string;
+  completed_at?: string;
+  created_at?: string;
+}
+
+export async function fetchClientDetail(token: string, clientId: string): Promise<ClientDetail> {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch client");
+  return res.json();
+}
+
+export async function fetchClientInterests(token: string, clientId: string): Promise<ClientInterest[]> {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}/interests`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch interests");
+  return res.json();
+}
+
+export async function fetchClientNotes(token: string, clientId: string): Promise<ConsultingNote[]> {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}/notes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch notes");
+  return res.json();
+}
+
+export async function updateClient(token: string, clientId: string, data: Partial<UserProfile>) {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update client");
+  return res.json();
+}
+
+export async function fetchClientActivities(token: string, clientId: string): Promise<ClientActivityItem[]> {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}/activities`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch activities");
+  return res.json();
+}
+
+export async function createClientActivity(token: string, clientId: string, data: {
+  activity_type: string; title: string; description?: string; scheduled_at?: string;
+}) {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}/activities`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create activity");
+  return res.json();
+}
+
+export async function completeActivity(token: string, clientId: string, activityId: string) {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}/activities/${activityId}/complete`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to complete activity");
+  return res.json();
+}
+
+export async function createNote(token: string, clientId: string, content: string, grantId?: string) {
+  const res = await fetch(`${API_URL}/api/clients/${clientId}/notes`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ client_user_id: clientId, content, grant_id: grantId }),
+  });
+  if (!res.ok) throw new Error("Failed to create note");
+  return res.json();
+}
+
+export async function fetchCalendarActivities(token: string): Promise<ClientActivityItem[]> {
+  const res = await fetch(`${API_URL}/api/clients/calendar/activities`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch calendar activities");
+  return res.json();
+}
+
+export async function fetchDashboardFeed(token: string): Promise<DashboardActivity[]> {
+  const res = await fetch(`${API_URL}/api/clients/dashboard`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch dashboard");
+  return res.json();
+}
+
+export async function createInterest(token: string, grantId: string, notes?: string) {
+  const res = await fetch(`${API_URL}/api/interests`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ grant_id: grantId, notes }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "관심 등록 실패");
+  return res.json();
+}
+
+export async function transitionPipeline(token: string, interestId: string, status: string, resultType?: string) {
+  const res = await fetch(`${API_URL}/api/interests/${interestId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ pipeline_status: status, result_type: resultType }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "상태 변경 실패");
+  return res.json();
+}
+
+export async function fetchNotifications(token: string, unread = false): Promise<NotificationItem[]> {
+  const res = await fetch(`${API_URL}/api/notifications?unread=${unread}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch notifications");
+  return res.json();
+}
+
+export async function fetchUnreadCount(token: string): Promise<number> {
+  const res = await fetch(`${API_URL}/api/notifications/count`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return 0;
+  const data = await res.json();
+  return data.count;
+}
+
+export async function markNotificationRead(token: string, id: string) {
+  await fetch(`${API_URL}/api/notifications/${id}/read`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function markAllNotificationsRead(token: string) {
+  await fetch(`${API_URL}/api/notifications/read-all`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }

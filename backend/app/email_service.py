@@ -71,6 +71,53 @@ def send_verification_email(to_email: str, code: str) -> str | None:
         return None
 
 
+def send_invite_email(to_email: str, consultant_name: str, token: str) -> str | None:
+    if not settings.resend_api_key:
+        logger.warning("Resend API key not set, skipping invite email")
+        return None
+
+    init_resend()
+    invite_url = f"https://danbi.forlabs.io/invite/{token}"
+
+    html = f"""
+    <div style="max-width:600px; margin:0 auto; font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+        <div style="background:#1e40af; padding:24px; border-radius:12px 12px 0 0;">
+            <h1 style="color:white; margin:0; font-size:20px;">단비에 초대되었습니다</h1>
+        </div>
+        <div style="padding:32px 24px; background:#f9fafb;">
+            <p style="font-size:16px; color:#374151; margin-bottom:8px;">
+                <strong>{consultant_name}</strong>님이 단비를 통해 맞춤 지원사업을 찾아드립니다.
+            </p>
+            <p style="font-size:14px; color:#6b7280; margin-bottom:24px;">
+                아래 버튼을 클릭하면 귀사에 맞는 정부지원사업을 바로 탐색할 수 있습니다.
+            </p>
+            <div style="text-align:center; margin:24px 0;">
+                <a href="{invite_url}" style="display:inline-block; background:#2563EB; color:white; font-size:14px; font-weight:600; padding:13px 32px; border-radius:8px; text-decoration:none;">
+                    단비 시작하기
+                </a>
+            </div>
+            <p style="font-size:12px; color:#9ca3af; text-align:center;">이 초대는 7일 후 만료됩니다.</p>
+        </div>
+        <div style="padding:16px; text-align:center; color:#9ca3af; font-size:12px;">
+            <p>이 메일은 Danbi에서 발송되었습니다.</p>
+        </div>
+    </div>
+    """
+
+    try:
+        result = resend.Emails.send({
+            "from": "Danbi <noreply@forlabs.io>",
+            "to": [to_email],
+            "subject": f"[단비] {consultant_name}님이 맞춤 지원사업을 찾아드립니다",
+            "html": html,
+        })
+        logger.info("Invite email sent to %s: %s", to_email, result)
+        return result.get("id")
+    except Exception as e:
+        logger.error("Failed to send invite email to %s: %s", to_email, e)
+        return None
+
+
 def _render_grant_card(item: tuple, today: date, is_urgent: bool = False) -> str:
     """Render a single grant card for the email."""
     grant, score, checklist, confidence = item

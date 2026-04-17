@@ -145,8 +145,9 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     # Delete the used verification code
     _delete_code(body.email)
 
+    from app.deps import create_jwt
     return AuthResponse(
-        token=str(user.id),
+        token=create_jwt(user),
         user=UserResponse.model_validate(user),
     )
 
@@ -175,8 +176,9 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="이메일 또는 비밀번호가 올바르지 않습니다.",
         )
 
+    from app.deps import create_jwt
     return AuthResponse(
-        token=str(user.id),
+        token=create_jwt(user),
         user=UserResponse.model_validate(user),
     )
 

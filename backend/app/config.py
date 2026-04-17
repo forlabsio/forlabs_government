@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     voyage_api_key: str = ""
     resend_api_key: str = ""
     admin_email: str = ""
+    jwt_secret: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
 
     bizinfo_api_key: str = ""
     kocca_api_key: str = ""
@@ -18,7 +21,7 @@ class Settings(BaseSettings):
     subsidy24_api_key: str = ""
     smes_api_key: str = ""
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
     @property
     def async_database_url(self) -> str:

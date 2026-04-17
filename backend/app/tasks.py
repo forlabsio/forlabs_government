@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.collectors.registry import ALL_COLLECTORS
 from app.database import async_session as _db_session_factory
-from app.models import EmailLog, GrantProject, User
+from app.models import ClientInterest, EmailLog, GrantProject, Notification, User
 
 
 @dataclass
@@ -351,3 +351,72 @@ def _match_grants_for_user(user: User, grants: list[GrantProject]) -> list[Grant
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return [g for _, g in scored]
+
+
+async def send_deadline_notifications():
+    """매일 09:00 KST — 마감 임박 사업(T-7, T-3, T-1) 알림 생성."""
+    from sqlalchemy import and_
+
+    session_factory = _db_session_factory
+    today = date.today()
+    deadlines = {
+        7: "deadline_7d",
+        3: "deadline_3d",
+        1: "deadline_1d",
+    }
+
+    async with session_factory() as db:
+        sent = 0
+        for days_before, notif_type in deadlines.items():
+            target_date = today + timedelta(days=days_before)
+
+            # Find grants with this end_date
+            grants_result = await db.execute(
+                select(GrantProject).where(GrantProject.end_date == target_date)
+            )
+            grants = grants_result.scalars().all()
+
+            for grant in grants:
+                # Find users who have this grant in their interests
+                interests_result = await db.execute(
+                    select(ClientInterest).where(ClientInterest.grant_id == grant.id)
+                )
+                interests = interests_result.scalars().all()
+
+                for interest in interests:
+                    # Dedup: check if same notification already exists today
+                    existing = await db.execute(
+                        select(Notification).where(
+                            and_(
+                                Notification.user_id == interest.user_id,
+                                Notification.type == notif_type,
+                                func.date(Notification.created_at) == today,
+                            )
+                        )
+                    )
+                    if existing.scalar_one_or_none():
+                        continue
+
+                    title = f"'{grant.title}' 마감 D-{days_before}"
+                    db.add(Notification(
+                        user_id=interest.user_id,
+                        type=notif_type,
+                        title=title,
+                        body=f"{grant.organization or ''} · 마감일: {target_date}",
+                        metadata_json={"grant_id": str(grant.id)},
+                    ))
+
+                    # Also notify the consultant
+                    user_result = await db.execute(select(User).where(User.id == interest.user_id))
+                    user = user_result.scalar_one_or_none()
+                    if user and user.invited_by:
+                        db.add(Notification(
+                            user_id=user.invited_by,
+                            type=notif_type,
+                            title=f"{user.name or user.email} — '{grant.title}' 마감 D-{days_before}",
+                            metadata_json={"grant_id": str(grant.id), "client_id": str(user.id)},
+                        ))
+                    sent += 1
+
+        await db.commit()
+        logger.info("send_deadline_notifications: %d notifications sent", sent)

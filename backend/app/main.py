@@ -8,14 +8,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin, auth, bookmarks, briefing, grants, intelligence, search
+from app.routers import admin, auth, bookmarks, briefing, clients, grants, intelligence, invitations, notifications, organizations, pipeline, search
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.tasks import run_all_collectors, send_daily_curation
+    from app.tasks import run_all_collectors, send_daily_curation, send_deadline_notifications
 
     # One-time backfill: populate amount_max from summary text for existing grants
     from app.tasks import backfill_amount_max
@@ -26,8 +26,9 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(run_all_collectors, CronTrigger(hour=14, minute=0), args=["14:00"], id="collect-2pm")
     scheduler.add_job(run_all_collectors, CronTrigger(hour=17, minute=0), args=["17:00"], id="collect-5pm")
     scheduler.add_job(send_daily_curation, CronTrigger(hour=8, minute=0), id="daily-email-8am")
+    scheduler.add_job(send_deadline_notifications, CronTrigger(hour=9, minute=0), id="deadline-alerts-9am")
     scheduler.start()
-    logger.info("APScheduler started with 3 jobs")
+    logger.info("APScheduler started with 4 jobs (incl. deadline alerts)")
 
     yield
 
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:3010",
         "https://frontend-production-3aea.up.railway.app",
         "https://danbi.forlabs.io",
     ],
@@ -58,6 +60,11 @@ app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(intelligence.router)
 app.include_router(briefing.router)
+app.include_router(organizations.router)
+app.include_router(invitations.router)
+app.include_router(clients.router)
+app.include_router(pipeline.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health")

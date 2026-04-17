@@ -30,6 +30,24 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 
+# ── B2B2C: Organization (컨설팅사/조직) ─────────────────────────
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    plan_type: Mapped[str] = mapped_column(String, default="free")
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    owner: Mapped["User"] = relationship(back_populates="owned_organization", foreign_keys=[owner_id])
+    members: Mapped[list["User"]] = relationship(back_populates="organization", foreign_keys="User.organization_id")
+    invitations: Mapped[list["Invitation"]] = relationship(back_populates="organization")
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -38,6 +56,12 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     name: Mapped[str | None] = mapped_column(String)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # B2B2C fields
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
+    role: Mapped[str] = mapped_column(String, default="user")  # 'consultant' | 'client' | 'admin' | 'user'
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Profile fields
     company_name: Mapped[str | None] = mapped_column(String)
     industry: Mapped[str | None] = mapped_column(String)
     company_age: Mapped[int | None] = mapped_column(Integer)
@@ -52,9 +76,111 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    organization: Mapped["Organization"] = relationship(back_populates="members", foreign_keys=[organization_id])
+    owned_organization: Mapped["Organization"] = relationship(back_populates="owner", foreign_keys="Organization.owner_id")
     bookmarks: Mapped[list["UserBookmark"]] = relationship(back_populates="user")
     search_logs: Mapped[list["SearchLog"]] = relationship(back_populates="user")
     email_logs: Mapped[list["EmailLog"]] = relationship(back_populates="user")
+    client_interests: Mapped[list["ClientInterest"]] = relationship(back_populates="user")
+
+
+# ── B2B2C: Invitation (초대 토큰) ────────────────────────────────
+
+
+class Invitation(Base):
+    __tablename__ = "invitations"
+    __table_args__ = (UniqueConstraint("organization_id", "email"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    invited_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    organization: Mapped["Organization"] = relationship(back_populates="invitations")
+    inviter: Mapped["User"] = relationship(foreign_keys=[invited_by])
+
+
+# ── B2B2C: ClientInterest (고객 관심 사업 + 파이프라인) ──────────
+
+
+class ClientInterest(Base):
+    __tablename__ = "client_interests"
+    __table_args__ = (UniqueConstraint("user_id", "grant_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    grant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grant_projects.id"), nullable=False)
+    pipeline_status: Mapped[str] = mapped_column(String, default="관심")  # 관심|상담|신청|결과
+    result_type: Mapped[str | None] = mapped_column(String, nullable=True)  # 선정|탈락|보류
+    eligibility_status: Mapped[str | None] = mapped_column(String, nullable=True)  # 가능|불가능|조건부
+    eligibility_detail = mapped_column(JSONB, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="client_interests")
+    grant: Mapped["GrantProject"] = relationship()
+
+
+# ── B2B2C: ConsultingNote (컨설턴트 메모) ─────────────────────────
+
+
+class ConsultingNote(Base):
+    __tablename__ = "consulting_notes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    consultant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    grant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("grant_projects.id"), nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    consultant: Mapped["User"] = relationship(foreign_keys=[consultant_id])
+    client: Mapped["User"] = relationship(foreign_keys=[client_user_id])
+    grant: Mapped["GrantProject"] = relationship()
+
+
+# ── B2B2C: Activity (미팅/상담/연락 기록) ──────────────────────────
+
+
+class ClientActivity(Base):
+    __tablename__ = "client_activities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    consultant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    client_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    activity_type: Mapped[str] = mapped_column(String, nullable=False)
+        # 'meeting' | 'call' | 'email' | 'visit' | 'note' | 'other'
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    consultant: Mapped["User"] = relationship(foreign_keys=[consultant_id])
+    client: Mapped["User"] = relationship(foreign_keys=[client_user_id])
+
+
+# ── B2B2C: Notification (알림) ────────────────────────────────────
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json = mapped_column(JSONB, default=dict)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship()
 
 
 class GrantProject(Base):
@@ -124,7 +250,7 @@ class SearchLog(Base):
     filters_used = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    user: Mapped["User | None"] = relationship(back_populates="search_logs")
+    user: Mapped["User"] = relationship(back_populates="search_logs")
 
 
 class FetchLog(Base):

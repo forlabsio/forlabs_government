@@ -17,6 +17,9 @@ import {
   Shield,
   Bookmark,
   Command,
+  Activity,
+  Users,
+  Calendar,
 } from "lucide-react";
 import { FOUNDRY } from "@/lib/theme";
 import { useAuth } from "@/components/AuthProvider";
@@ -36,7 +39,7 @@ interface NavItem {
 
 /* ─── Nav definition ─────────────────────────────────────────────────── */
 
-const NAV_ITEMS: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home", icon: LayoutDashboard, section: "MAIN" },
   { href: "/grants", label: "과제 탐색", icon: Search, section: "MAIN" },
   { href: "/matching", label: "자동 매칭", icon: Zap, section: "INTELLIGENCE" },
@@ -44,6 +47,13 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/bookmarks", label: "북마크", icon: Bookmark, section: "MY" },
   { href: "#data-sources", label: "Data Sources", icon: Database, section: "DATA", isAction: true },
 ];
+
+const CONSULTANT_NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "고객 활동", icon: Activity, section: "CLIENTS" },
+  { href: "/clients", label: "내 고객", icon: Users, section: "CLIENTS" },
+  { href: "/calendar", label: "일정", icon: Calendar, section: "CLIENTS" },
+];
+
 
 /* ─── Breadcrumb label map ───────────────────────────────────────────── */
 
@@ -57,6 +67,10 @@ const BREADCRUMB_MAP: Record<string, string> = {
   "/bookmarks": "북마크",
   "/login": "로그인",
   "/signup": "회원가입",
+  "/dashboard": "고객 활동",
+  "/clients": "내 고객",
+  "/onboarding": "프로필 설정",
+  "/calendar": "일정",
 };
 
 function getBreadcrumb(pathname: string): string {
@@ -172,7 +186,7 @@ function DataSourcesPanel({ onClose }: { onClose: () => void }) {
 
 /* ─── Sidebar ────────────────────────────────────────────────────────── */
 
-const SECTIONS = ["MAIN", "INTELLIGENCE", "MY", "DATA"] as const;
+const SECTIONS = ["MAIN", "INTELLIGENCE", "CLIENTS", "MY", "DATA"] as const;
 
 function Sidebar({
   expanded,
@@ -215,6 +229,9 @@ function Sidebar({
     >
       <nav style={{ flex: 1, paddingTop: 8, paddingBottom: 8 }}>
         {SECTIONS.map((section) => {
+          const NAV_ITEMS = (user?.role === "consultant" || user?.is_admin)
+            ? [...BASE_NAV_ITEMS, ...CONSULTANT_NAV_ITEMS]
+            : BASE_NAV_ITEMS;
           const items = NAV_ITEMS.filter((item) => item.section === section);
           return (
             <div key={section} style={{ marginBottom: 4 }}>
