@@ -49,6 +49,8 @@ class User(Base):
     is_corporate: Mapped[bool] = mapped_column(Boolean, default=False)
     is_venture: Mapped[bool] = mapped_column(Boolean, default=False)
     email_opt_in: Mapped[bool] = mapped_column(Boolean, default=True)
+    if _PGVECTOR_AVAILABLE:
+        profile_embedding = mapped_column(_Vector(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -79,6 +81,8 @@ class GrantProject(Base):
     detail_url: Mapped[str | None] = mapped_column(String)
     view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     dedup_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    if _PGVECTOR_AVAILABLE:
+        content_embedding = mapped_column(_Vector(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
